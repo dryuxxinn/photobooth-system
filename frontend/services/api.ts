@@ -16,12 +16,15 @@ export function getApiBaseUrl(): string {
     return envUrl.replace(/\/$/, "");
   }
   if (typeof window !== "undefined") {
-    // If accessed over HTTPS (e.g. Cloudflare Tunnel / public domain) without custom NEXT_PUBLIC_API_URL,
-    // default to same-origin so reverse proxy routes API and avoids Mixed Content errors.
+    const host = window.location.hostname || "localhost";
+    // If accessed on "booth.<domain>", route API calls to "api-booth.<domain>"
+    if (host.startsWith("booth.")) {
+      return `${window.location.protocol}//api-${host}`;
+    }
+    // If accessed over HTTPS without custom API URL, use same-origin (Next.js rewrites proxy to backend)
     if (window.location.protocol === "https:") {
       return window.location.origin;
     }
-    const host = window.location.hostname || "localhost";
     return `http://${host}:8000`;
   }
   return envUrl || "http://localhost:8000";
@@ -29,9 +32,16 @@ export function getApiBaseUrl(): string {
 
 export function getWsUrl(): string {
   const base = getApiBaseUrl();
-  if (typeof window !== "undefined" && (!base || base === window.location.origin)) {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${window.location.host}/ws/session`;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "localhost";
+    if (host.startsWith("booth.")) {
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//api-${host}/ws/session`;
+    }
+    if (!base || base === window.location.origin) {
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${window.location.host}/ws/session`;
+    }
   }
   return base.replace(/^http/, "ws") + "/ws/session";
 }
