@@ -16,6 +16,11 @@ export function getApiBaseUrl(): string {
     return envUrl.replace(/\/$/, "");
   }
   if (typeof window !== "undefined") {
+    // If accessed over HTTPS (e.g. Cloudflare Tunnel / public domain) without custom NEXT_PUBLIC_API_URL,
+    // default to same-origin so reverse proxy routes API and avoids Mixed Content errors.
+    if (window.location.protocol === "https:") {
+      return window.location.origin;
+    }
     const host = window.location.hostname || "localhost";
     return `http://${host}:8000`;
   }
@@ -24,6 +29,10 @@ export function getApiBaseUrl(): string {
 
 export function getWsUrl(): string {
   const base = getApiBaseUrl();
+  if (typeof window !== "undefined" && (!base || base === window.location.origin)) {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${window.location.host}/ws/session`;
+  }
   return base.replace(/^http/, "ws") + "/ws/session";
 }
 
