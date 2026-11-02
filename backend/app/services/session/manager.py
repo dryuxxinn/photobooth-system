@@ -45,6 +45,7 @@ class SessionManager:
             SessionState.ERROR,
         ],
         SessionState.PREVIEW: [
+            SessionState.CAPTURING,
             SessionState.PROCESSING,
             SessionState.PRINTING,
             SessionState.COMPLETED,
@@ -254,6 +255,66 @@ class SessionManager:
             session["error_message"] = str(e)
             self._transition_to(SessionState.ERROR)
             raise
+
+    def retake_last_photo(self) -> Dict[str, Any]:
+        """
+        Removes the last captured photo so the slot can be retaken by the user.
+        Transitions state back to CAPTURING if necessary.
+        """
+        session = self.current_session
+        if not session:
+            raise RuntimeError("No active session found.")
+
+        if not session.get("photos"):
+            raise RuntimeError("No photos captured yet to retake.")
+
+        popped = session["photos"].pop()
+        session["photos_taken"] = len(session["photos"])
+        session["error_message"] = None
+
+        # Clean up files on disk if present
+        for path_key in ("original_path", "thumbnail_path"):
+            raw_path = popped.get(path_key)
+            if raw_path:
+                try:
+                    p = Path(raw_path)
+                    if p.exists():
+                        p.unlink()
+                except Exception:
+                    pass
+
+        preview_filename = f"preview_{popped['filename']}"
+        preview_path = settings.THUMBNAILS_DIR / preview_filename
+        if preview_path.exists():
+            try:
+                preview_path.unlink()
+            except Exception:
+                pass
+
+        # Clear processed image if it was already composed
+        if session.get("processed_image_path"):
+            proc_p = Path(session["processed_image_path"])
+            if proc_p.exists():
+                try:
+                    proc_p.unlink()
+                except Exception:
+                    pass
+            session["processed_image_path"] = None
+            session["processed_image_url"] = None
+
+        if self.state != SessionState.CAPTURING:
+            self._transition_to(SessionState.CAPTURING)
+
+        self._persist_current_session()
+        self._emit_event(
+            "PHOTO_RETAKEN",
+            {
+                "session_id": session["session_id"],
+                "photos_taken": session["photos_taken"],
+                "photos_required": session["photos_required"],
+            },
+        )
+        return session
 
     def process_session_photos(
         self,

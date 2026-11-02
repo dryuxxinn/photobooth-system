@@ -121,6 +121,11 @@ export const photoboothApi = {
       body: imageData ? JSON.stringify({ image_data: imageData }) : undefined,
     }),
 
+  retakeLastPhoto: (sessionId: string) =>
+    request<SessionDetail>(`/session/${sessionId}/retake`, {
+      method: "POST",
+    }),
+
   processSession: (payload: {
     session_id: string;
     filter_name?: string;

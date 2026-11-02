@@ -18,6 +18,7 @@ interface CameraPreviewProps {
   photosRequired: number;
   photosTaken: number;
   mode: "preparation" | "capturing";
+  isReviewing?: boolean;
   cameraSource?: CameraSourceMode;
   onChangeCameraSource?: (source: CameraSourceMode) => void;
   facingMode?: WebcamFacingMode;
@@ -36,6 +37,7 @@ export function CameraPreview({
   photosRequired,
   photosTaken,
   mode,
+  isReviewing = false,
   cameraSource = "webcam",
   onChangeCameraSource,
   facingMode = "user",
@@ -54,11 +56,11 @@ export function CameraPreview({
     : "";
 
   return (
-    <div className="w-full max-w-2xl flex flex-col gap-2.5">
+    <div className="w-full max-w-xl md:max-w-2xl flex flex-col gap-2">
       {/* Main 3:2 Camera Viewport */}
       <div className="relative w-full aspect-[3/2] rounded-[2rem] bg-sweet-surface border-4 border-sweet-primary shadow-sweetLg overflow-hidden flex flex-col items-center justify-center">
         {/* Top Status Overlay inside Camera Frame */}
-        <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 z-10 pointer-events-none">
+        <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
           {isUsingWebcam ? (
             <StatusBadge tone={streamReady ? "success" : "warning"}>
               {streamReady
@@ -108,19 +110,34 @@ export function CameraPreview({
           </div>
         )}
 
-        {/* Mini corner thumbnail of latest captured photo when live webcam is active */}
-        {isUsingWebcam && streamReady && latestSrc && mode === "capturing" && (
-          <div className="absolute bottom-4 left-4 z-10 bg-white p-1.5 rounded-2xl border-2 border-sweet-primary shadow-sweet pointer-events-none flex items-center gap-2">
+        {/* Full-size preview of photo just taken during 5s review intermission */}
+        {latestSrc && isReviewing && (
+          <div className="absolute inset-0 z-10 bg-black animate-screen-fade flex items-center justify-center">
             <img
               src={latestSrc}
-              alt={`Foto terakhir #${latestPhoto?.index || photosTaken}`}
-              className="w-20 h-14 object-cover rounded-xl"
+              alt={`Hasil foto ke-${latestPhoto?.index || photosTaken}`}
+              className="w-full h-full object-cover"
             />
-            <span className="pr-2 font-heading font-bold text-xs text-sweet-text">
-              #{latestPhoto?.index || photosTaken} Tersimpan ✓
-            </span>
           </div>
         )}
+
+        {/* Mini corner thumbnail of latest captured photo when live webcam is active (hidden when reviewing) */}
+        {isUsingWebcam &&
+          streamReady &&
+          latestSrc &&
+          mode === "capturing" &&
+          !isReviewing && (
+            <div className="absolute bottom-4 left-4 z-10 bg-white p-1.5 rounded-2xl border-2 border-sweet-primary shadow-sweet pointer-events-none flex items-center gap-2">
+              <img
+                src={latestSrc}
+                alt={`Foto terakhir #${latestPhoto?.index || photosTaken}`}
+                className="w-20 h-14 object-cover rounded-xl"
+              />
+              <span className="pr-2 font-heading font-bold text-xs text-sweet-text">
+                #{latestPhoto?.index || photosTaken} Tersimpan ✓
+              </span>
+            </div>
+          )}
 
         {/* Fallback view when using Server Camera OR when Webcam permission is not yet active */}
         {(!isUsingWebcam || !streamReady) && (

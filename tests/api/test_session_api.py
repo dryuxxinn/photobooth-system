@@ -75,6 +75,44 @@ def test_session_capture_with_webcam_image_data(test_client: TestClient):
     assert detail.json()["status"] == "PREVIEW"
     test_client.post(f"/session/{session_id}/complete")
 
+def test_session_retake_photo(test_client: TestClient):
+    start = test_client.post(
+        "/session/start",
+        json={"customer_name": "Retake Tester", "photos_required": 2, "template_id": "solo_duo_2"}
+    )
+    assert start.status_code == 201
+    session_id = start.json()["session_id"]
+
+    # 1. Capture pose 1
+    cap1 = test_client.post(f"/session/{session_id}/capture")
+    assert cap1.status_code == 200
+    assert cap1.json()["index"] == 1
+
+    # 2. Retake pose 1
+    retake = test_client.post(f"/session/{session_id}/retake")
+    assert retake.status_code == 200
+    assert retake.json()["photos_taken"] == 0
+    assert retake.json()["status"] == "CAPTURING"
+
+    # 3. Capture pose 1 again
+    cap1_again = test_client.post(f"/session/{session_id}/capture")
+    assert cap1_again.status_code == 200
+    assert cap1_again.json()["index"] == 1
+
+    # 4. Capture pose 2 (completes session to PREVIEW)
+    cap2 = test_client.post(f"/session/{session_id}/capture")
+    assert cap2.status_code == 200
+    assert cap2.json()["index"] == 2
+
+    # 5. Retake pose 2 from PREVIEW
+    retake2 = test_client.post(f"/session/{session_id}/retake")
+    assert retake2.status_code == 200
+    assert retake2.json()["photos_taken"] == 1
+    assert retake2.json()["status"] == "CAPTURING"
+
+    # Complete or abort
+    test_client.post(f"/session/{session_id}/abort")
+
 def test_session_conflict_on_start(test_client: TestClient):
     # Start session 1
     res1 = test_client.post("/session/start", json={"photos_required": 3})

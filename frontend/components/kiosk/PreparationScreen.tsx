@@ -28,6 +28,8 @@ interface PreparationScreenProps {
   onSelectTemplate: (tpl: TemplateOption) => void;
   selectedFrameColor: string;
   onSelectFrameColor: (colorId: string) => void;
+  selectedCountdownSeconds: number;
+  onSelectCountdownSeconds: (sec: number) => void;
   cameraSource: CameraSourceMode;
   onChangeCameraSource: (source: CameraSourceMode) => void;
   facingMode: WebcamFacingMode;
@@ -47,6 +49,8 @@ export function PreparationScreen({
   templates,
   selectedTemplate,
   onSelectTemplate,
+  selectedCountdownSeconds,
+  onSelectCountdownSeconds,
   cameraSource,
   onChangeCameraSource,
   facingMode,
@@ -200,6 +204,53 @@ export function PreparationScreen({
               })}
             </div>
 
+            {/* Timer Hitung Mundur Selection (1s, 3s, 5s) */}
+            <div className="pt-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-heading font-bold text-sm text-sweet-text flex items-center gap-1.5">
+                  <SparkleIcon className="size-3.5 text-sweet-primaryStrong" />
+                  <span>Timer Hitung Mundur</span>
+                </label>
+                <StatusBadge tone="pink">
+                  {selectedCountdownSeconds} Detik
+                </StatusBadge>
+              </div>
+              <div
+                role="radiogroup"
+                aria-label="Pilih durasi hitung mundur per foto"
+                className="grid grid-cols-3 gap-2"
+              >
+                {[
+                  { sec: 1, label: "1 Detik", desc: "Cepat ⚡" },
+                  { sec: 3, label: "3 Detik", desc: "Standar ✨" },
+                  { sec: 5, label: "5 Detik", desc: "Santai ♡" },
+                ].map((item) => {
+                  const isSelected = selectedCountdownSeconds === item.sec;
+                  return (
+                    <button
+                      key={item.sec}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => onSelectCountdownSeconds(item.sec)}
+                      className={`min-h-[52px] p-2 rounded-2xl border-2 text-center transition-all ${
+                        isSelected
+                          ? "bg-sweet-blush border-sweet-primaryStrong shadow-sm"
+                          : "bg-sweet-bg hover:bg-sweet-blush/40 border-sweet-border"
+                      }`}
+                    >
+                      <div className="font-heading font-extrabold text-sm text-sweet-text">
+                        {item.label}
+                      </div>
+                      <div className="text-[11px] text-sweet-muted font-medium mt-0.5">
+                        {item.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Optional Custom Name / Caption */}
             <div className="pt-1">
               <label
@@ -228,17 +279,22 @@ export function PreparationScreen({
             </div>
 
             {/* Brief Instructions */}
-            <ol className="text-xs text-sweet-muted space-y-1 bg-sweet-bg p-3.5 rounded-2xl border border-sweet-border list-decimal list-inside">
+            <ol className="text-xs text-sweet-muted space-y-1.5 bg-sweet-bg p-3.5 rounded-2xl border border-sweet-border list-decimal list-inside">
               <li>
                 Kamera akan memotret{" "}
                 <strong className="text-sweet-text">
                   {selectedTemplate.photos_required} kali
                 </strong>{" "}
-                dengan hitung mundur 3 detik.
+                dengan timer{" "}
+                <strong className="text-sweet-text">
+                  {selectedCountdownSeconds} detik
+                </strong>.
               </li>
               <li>
-                Setelah selesai, kamu bebas memilih warna frame & desain
-                template favoritmu!
+                Setiap foto memiliki preview 5 detik untuk lanjut atau foto ulang.
+              </li>
+              <li>
+                Setelah selesai, kamu bebas memilih warna frame & desain favoritmu!
               </li>
             </ol>
           </Card>

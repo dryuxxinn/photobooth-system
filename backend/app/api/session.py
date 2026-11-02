@@ -102,6 +102,27 @@ def capture_photo_for_session(
         )
 
 
+@router.post("/{session_id}/retake", response_model=SessionDetailResponse)
+def retake_last_photo(session_id: str):
+    manager = get_session_manager()
+    session = manager.get_current_session()
+    if session is None or session["session_id"] != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session '{session_id}' is not currently active.",
+        )
+
+    try:
+        updated = manager.retake_last_photo()
+        return SessionDetailResponse(**updated)
+    except SessionTransitionError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.post("/{session_id}/process", response_model=SessionDetailResponse)
 def process_session(
     session_id: str,

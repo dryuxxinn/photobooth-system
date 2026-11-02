@@ -48,6 +48,9 @@ export function usePhotoboothSession() {
     DEFAULT_TEMPLATES[0]
   );
   const [selectedFrameColor, setSelectedFrameColor] = useState<string>("pink");
+  const [selectedCountdownSeconds, setSelectedCountdownSeconds] =
+    useState<number>(3);
+  const [reviewCountdown, setReviewCountdown] = useState<number | null>(null);
 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
@@ -72,6 +75,9 @@ export function usePhotoboothSession() {
   const abortFlowRef = useRef(false);
   const sequenceRunningRef = useRef(false);
   const customizingRef = useRef(false);
+  const reviewResolverRef = useRef<((choice: "next" | "retake") => void) | null>(
+    null
+  );
   const runSequenceRef = useRef<(s: SessionDetail) => Promise<void>>(
     async () => {}
   );
@@ -80,6 +86,7 @@ export function usePhotoboothSession() {
   useEffect(() => {
     const cfg = loadOperatorConfig();
     setOperatorConfig(cfg);
+    setSelectedCountdownSeconds(cfg.countdownSeconds || COUNTDOWN_SECONDS);
     const defaultTpl =
       DEFAULT_TEMPLATES.find((t) => t.id === cfg.defaultTemplateId) ||
       DEFAULT_TEMPLATES[0];
@@ -99,6 +106,52 @@ export function usePhotoboothSession() {
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
+  const waitForReviewIntermission = useCallback(
+    (durationSeconds: number = 5): Promise<"next" | "retake"> => {
+      return new Promise((resolve) => {
+        let secondsLeft = durationSeconds;
+        setReviewCountdown(secondsLeft);
+
+        let timer: NodeJS.Timeout | null = null;
+
+        const cleanup = () => {
+          if (timer) clearInterval(timer);
+          reviewResolverRef.current = null;
+          setReviewCountdown(null);
+        };
+
+        const handleChoice = (choice: "next" | "retake") => {
+          cleanup();
+          resolve(choice);
+        };
+
+        reviewResolverRef.current = handleChoice;
+
+        timer = setInterval(() => {
+          secondsLeft -= 1;
+          if (secondsLeft <= 0) {
+            handleChoice("next");
+          } else {
+            setReviewCountdown(secondsLeft);
+          }
+        }, 1000);
+      });
+    },
+    []
+  );
+
+  const proceedFromReview = useCallback(() => {
+    if (reviewResolverRef.current) {
+      reviewResolverRef.current("next");
+    }
+  }, []);
+
+  const retakeCurrentPhoto = useCallback(() => {
+    if (reviewResolverRef.current) {
+      reviewResolverRef.current("retake");
+    }
+  }, []);
+
   const runAutomatedCaptureSequence = useCallback(
     async (activeSession: SessionDetail) => {
       if (sequenceRunningRef.current) return;
@@ -108,14 +161,16 @@ export function usePhotoboothSession() {
       setKioskStep("CAPTURING");
 
       const totalPhotos = activeSession.photos_required;
-      const startIndex = activeSession.photos_taken + 1;
-      const cdSeconds = operatorConfig.countdownSeconds || COUNTDOWN_SECONDS;
+      let currentPose = activeSession.photos_taken + 1;
+      const cdSeconds = selectedCountdownSeconds || COUNTDOWN_SECONDS;
 
       try {
-        for (let idx = startIndex; idx <= totalPhotos; idx++) {
+        while (currentPose <= totalPhotos) {
           if (abortFlowRef.current) return;
 
-          setPoliteMessage(`Bersiap untuk foto ke-${idx} dari ${totalPhotos}`);
+          setPoliteMessage(
+            `Bersiap untuk foto ke-${currentPose} dari ${totalPhotos}`
+          );
 
           for (let sec = cdSeconds; sec >= 1; sec--) {
             if (abortFlowRef.current) {
@@ -135,6 +190,7 @@ export function usePhotoboothSession() {
           setIsFlashing(true);
           setTimeout(() => setIsFlashing(false), 420);
 
+          let capturedSuccessfully = false;
           try {
             setIsBusy(true);
             const webcamImageData = webcam.captureFrameDataUrl();
@@ -147,20 +203,8 @@ export function usePhotoboothSession() {
             if (updated.session) {
               setSession(updated.session);
               setState(updated.session.status);
-              setPoliteMessage(`Foto ke-${idx} berhasil disimpan`);
-
-              if (updated.session.status === "PREVIEW") {
-                setImageVersion((v) => v + 1);
-                const cfg = loadOperatorConfig();
-                if (cfg.enablePhotoSelectionStep) {
-                  setKioskStep("PHOTO_SELECTION");
-                } else if (cfg.enableTemplateSelectionStep) {
-                  setKioskStep("TEMPLATE_SELECTION");
-                } else {
-                  setKioskStep("PREVIEW");
-                }
-                return;
-              }
+              setPoliteMessage(`Foto ke-${currentPose} berhasil disimpan`);
+              capturedSuccessfully = true;
             }
           } catch (err: any) {
             setCountdown(null);
@@ -168,22 +212,66 @@ export function usePhotoboothSession() {
               err?.message ||
               "Kamera belum berhasil mengambil foto. Silakan coba lagi.";
             setCaptureError(msg);
-            setAssertiveMessage(`Gagal memotret foto ke-${idx}: ${msg}`);
+            setAssertiveMessage(`Gagal memotret foto ke-${currentPose}: ${msg}`);
             setIsBusy(false);
             return;
           } finally {
             setIsBusy(false);
           }
 
-          if (idx < totalPhotos && !abortFlowRef.current) {
+          if (!capturedSuccessfully || abortFlowRef.current) return;
+
+          // 5-second review intermission between captures
+          const decision = await waitForReviewIntermission(5);
+          if (abortFlowRef.current) return;
+
+          if (decision === "retake") {
+            try {
+              setIsBusy(true);
+              await photoboothApi.retakeLastPhoto(activeSession.session_id);
+              const afterRetake = await photoboothApi.getCurrentSession();
+              if (afterRetake.session) {
+                setSession(afterRetake.session);
+                setState(afterRetake.session.status);
+              }
+              setPoliteMessage(`Foto ke-${currentPose} siap diulang.`);
+              // Loop will repeat currentPose
+              continue;
+            } catch (err: any) {
+              const msg = err?.message || "Gagal mengulang foto.";
+              setCaptureError(msg);
+              return;
+            } finally {
+              setIsBusy(false);
+            }
+          }
+
+          // User proceeded or 5s timed out
+          if (currentPose >= totalPhotos) {
+            setImageVersion((v) => v + 1);
+            const cfg = loadOperatorConfig();
+            if (cfg.enablePhotoSelectionStep) {
+              setKioskStep("PHOTO_SELECTION");
+            } else if (cfg.enableTemplateSelectionStep) {
+              setKioskStep("TEMPLATE_SELECTION");
+            } else {
+              setKioskStep("PREVIEW");
+            }
+            return;
+          }
+
+          currentPose++;
+          if (!abortFlowRef.current) {
             await sleep(CAPTURE_PAUSE_MS);
           }
         }
       } finally {
         sequenceRunningRef.current = false;
+        setCountdown(null);
+        setReviewCountdown(null);
       }
     },
-    [operatorConfig.countdownSeconds, webcam]
+    [selectedCountdownSeconds, webcam, waitForReviewIntermission]
   );
 
   useEffect(() => {
@@ -446,6 +534,10 @@ export function usePhotoboothSession() {
   const abortCurrentSession = useCallback(async () => {
     abortFlowRef.current = true;
     sequenceRunningRef.current = false;
+    if (reviewResolverRef.current) {
+      reviewResolverRef.current("next");
+    }
+    setReviewCountdown(null);
     setCountdown(null);
     setCaptureError(null);
     if (!session) {
@@ -470,6 +562,10 @@ export function usePhotoboothSession() {
   const emergencyReset = useCallback(async () => {
     abortFlowRef.current = true;
     sequenceRunningRef.current = false;
+    if (reviewResolverRef.current) {
+      reviewResolverRef.current("next");
+    }
+    setReviewCountdown(null);
     setCountdown(null);
     setCaptureError(null);
     await photoboothApi.resetSystem().catch(() => null);
@@ -503,7 +599,10 @@ export function usePhotoboothSession() {
     setSelectedTemplate: handleSelectTemplate,
     selectedFrameColor,
     setSelectedFrameColor,
+    selectedCountdownSeconds,
+    setSelectedCountdownSeconds,
     countdown,
+    reviewCountdown,
     isFlashing,
     isBusy,
     wsConnected,
@@ -518,6 +617,8 @@ export function usePhotoboothSession() {
     openPreparationStep,
     backToWelcome,
     startBoothSession,
+    proceedFromReview,
+    retakeCurrentPhoto,
     retryFailedCapture,
     completePhotoSelectionStep,
     customizePreview,

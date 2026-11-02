@@ -31,7 +31,10 @@ export default function KioskHomePage() {
     setSelectedTemplate,
     selectedFrameColor,
     setSelectedFrameColor,
+    selectedCountdownSeconds,
+    setSelectedCountdownSeconds,
     countdown,
+    reviewCountdown,
     isFlashing,
     isBusy,
     wsConnected,
@@ -46,6 +49,8 @@ export default function KioskHomePage() {
     openPreparationStep,
     backToWelcome,
     startBoothSession,
+    proceedFromReview,
+    retakeCurrentPhoto,
     retryFailedCapture,
     completePhotoSelectionStep,
     customizePreview,
@@ -132,6 +137,8 @@ export default function KioskHomePage() {
           onSelectTemplate={setSelectedTemplate}
           selectedFrameColor={selectedFrameColor}
           onSelectFrameColor={setSelectedFrameColor}
+          selectedCountdownSeconds={selectedCountdownSeconds}
+          onSelectCountdownSeconds={setSelectedCountdownSeconds}
           cameraSource={webcam.cameraSource}
           onChangeCameraSource={webcam.setCameraSource}
           facingMode={webcam.facingMode}
@@ -155,6 +162,9 @@ export default function KioskHomePage() {
           <CountdownOverlay
             session={session}
             countdown={countdown}
+            reviewCountdown={reviewCountdown}
+            onProceedNext={proceedFromReview}
+            onRetakeCurrent={retakeCurrentPhoto}
             isBusy={isBusy}
             captureError={captureError}
             cameraSource={webcam.cameraSource}
