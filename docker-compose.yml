@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: dryu-booth-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - CAMERA_DRIVER=${CAMERA_DRIVER:-simulation}
+      - CAMERA_MODEL=${CAMERA_MODEL:-Canon EOS 700D}
+      - PRINTER_DRIVER=${PRINTER_DRIVER:-simulation}
+      - PRINTER_NAME=${PRINTER_NAME:-Photo_Printer_Default}
+      - STORAGE_BASE_DIR=/app/storage
+      - DATABASE_PATH=/app/database/photobooth.db
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    volumes:
+      - ./storage:/app/storage
+      - ./database:/app/database
+      - ./templates:/app/templates
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dryu-booth-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+    depends_on:
+      backend:
+        condition: service_healthy

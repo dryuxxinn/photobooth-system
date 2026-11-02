@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #FFF9F2;
+  --color-surface: #FFFFFF;
+  --color-primary: #F6C9D2;
+  --color-primary-strong: #E98291;
+  --color-secondary: #DCD6F7;
+  --color-text-primary: #493B3B;
+  --color-text-muted: #887B7B;
+  --color-success: #54866A;
+  --color-error: #B84C58;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    line-height: 1.5;
+    text-align: start;
+    overflow-wrap: break-word;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  select {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: Quicksand, Nunito, ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+    text-wrap: balance;
+    line-height: 1.25;
+  }
+
+  p {
+    text-wrap: pretty;
+    max-width: 75ch;
+  }
+
+  :where(a:any-link, button, input, select, textarea):focus-visible {
+    outline: 3px solid var(--color-primary-strong);
+    outline-offset: 3px;
+  }
+}
+
+/* Sweet Studio soft pastel ambient background */
+.sweet-bg {
+  background-color: #FFF9F2;
+  background-image:
+    radial-gradient(circle at 12% 16%, rgba(246, 201, 210, 0.45) 0%, transparent 42%),
+    radial-gradient(circle at 88% 18%, rgba(220, 214, 247, 0.48) 0%, transparent 44%),
+    radial-gradient(circle at 50% 92%, rgba(246, 201, 210, 0.30) 0%, transparent 48%);
+}
+
+/* Native <dialog> modal scroll containment & top-layer transitions */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(73, 59, 59, 0);
+  backdrop-filter: blur(3px);
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.25s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog {
+  opacity: 0;
+  transform: translateY(12px) scale(0.97);
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.25s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+dialog[open]::backdrop {
+  background-color: rgba(73, 59, 59, 0.42);
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+
+  dialog[open]::backdrop {
+    background-color: rgba(73, 59, 59, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog {
+    transform: none;
+    transition-duration: 0.1s;
+  }
+
+  @starting-style {
+    dialog[open] {
+      transform: none;
+    }
+  }
+}
+
+/* Keyframes with nested prefers-reduced-motion handling */
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+@keyframes sticker-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes screen-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shutter-safe {
+  0% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 4s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.animate-sticker-pop {
+  animation: sticker-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.animate-screen-fade {
+  animation: screen-fade 0.28s ease-out forwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.shutter-flash-overlay {
+  animation: shutter-safe 0.42s ease-out forwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 0.15s;
+  }
+}
+
+/* Custom subtle scrollbars for kiosk panels */
+.kiosk-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.kiosk-scroll::-webkit-scrollbar-track {
+  background: rgba(246, 201, 210, 0.18);
+  border-radius: 9999px;
+}
+
+.kiosk-scroll::-webkit-scrollbar-thumb {
+  background: rgba(233, 130, 145, 0.45);
+  border-radius: 9999px;
+}

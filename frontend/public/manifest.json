@@ -1,0 +1,10 @@
+{
+  "name": "Sweet Studio Photobooth Kiosk",
+  "short_name": "Sweet Studio",
+  "description": "Sweet Studio — a little moment, a lovely memory",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFF9F2",
+  "theme_color": "#F6C9D2"
+}

@@ -1,0 +1,91 @@
+# ==============================================================================
+# Dryu Photobooth .gitignore
+# ==============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Node & Next.js Frontend ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.pnpm-store/
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Explicitly ensure frontend/lib is tracked (never ignored by generic lib/ rule)
+!frontend/lib/
+!frontend/lib/**
+
+# --- Testing & Coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# --- Local Storage & Customer Photos (Do NOT commit customer pictures) ---
+storage/captures/*
+!storage/captures/.gitkeep
+storage/processed/*
+!storage/processed/.gitkeep
+storage/thumbnails/*
+!storage/thumbnails/.gitkeep
+storage/exports/*
+!storage/exports/.gitkeep
+
+# --- SQLite Database ---
+*.sqlite3
+*.db
+*.db-journal
+/database/*.db
+/database/*.sqlite3
+
+# --- Environment Variables & Secrets ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- IDE, Editors & OS Files ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Scratch / Temporary Test Dumps ---
+scratch/
+tmp/
+*.tmp
