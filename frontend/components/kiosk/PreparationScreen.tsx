@@ -47,8 +47,11 @@ interface PreparationScreenProps {
 export function PreparationScreen({
   cameraStatus,
   templates,
+  frameThemes,
   selectedTemplate,
   onSelectTemplate,
+  selectedFrameColor,
+  onSelectFrameColor,
   selectedCountdownSeconds,
   onSelectCountdownSeconds,
   cameraSource,
@@ -112,7 +115,7 @@ export function PreparationScreen({
       className="flex-1 min-h-0 flex flex-col justify-between px-6 py-4 md:py-5 overflow-y-auto kiosk-scroll animate-screen-fade"
     >
       {/* Top Navigation Row */}
-      <div className="flex items-center justify-between gap-4 max-w-5xl w-full mx-auto">
+      <div className="flex items-center justify-between gap-4 max-w-7xl w-full mx-auto">
         <Button
           variant="surface"
           size="md"
@@ -140,9 +143,9 @@ export function PreparationScreen({
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center max-w-5xl w-full mx-auto my-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center max-w-7xl w-full mx-auto my-auto">
         {/* Left: Camera Preview Stage */}
-        <div className="lg:col-span-7 flex flex-col items-center">
+        <div className="lg:col-span-7 flex flex-col items-center animate-container-left">
           <CameraPreview
             cameraStatus={cameraStatus}
             photosRequired={selectedTemplate.photos_required}
@@ -157,63 +160,106 @@ export function PreparationScreen({
             deviceLabel={deviceLabel}
             attachVideoRef={attachVideoRef}
             onRetryWebcam={onRetryWebcam}
+            className="w-full"
           />
         </div>
 
         {/* Right: Session Info, Pose Package & Caption Input */}
-        <div className="lg:col-span-5 space-y-4">
-          <Card variant="surface" padding="md" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-heading font-bold text-lg text-sweet-text flex items-center gap-2">
-                <SparkleIcon className="size-4 text-sweet-primaryStrong" />
-                <span>Paket & Jumlah Pose</span>
-              </h2>
-              <StatusBadge tone="pink">
-                {selectedTemplate.photos_required} Pose
-              </StatusBadge>
+        <div className="lg:col-span-5 space-y-4 animate-container-right">
+          <Card variant="glass" padding="md" className="space-y-4">
+            {/* Pilihan Desain Frame / Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading font-extrabold text-sm text-sweet-text flex items-center gap-2">
+                  <SparkleIcon className="size-4 text-sweet-primaryStrong" />
+                  <span>Pilih Desain Frame</span>
+                </h2>
+                <span className="px-3 py-1 rounded-full bg-[#FBCFE8] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
+                  {selectedTemplate.photos_required} Slot Foto
+                </span>
+              </div>
+
+              <div
+                role="radiogroup"
+                aria-label="Pilih template frame"
+                className="grid grid-cols-2 gap-2.5 max-h-44 overflow-y-auto kiosk-scroll pr-1"
+              >
+                {templates.map((tpl) => {
+                  const isSelected = selectedTemplate.id === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => onSelectTemplate(tpl)}
+                      className={`min-h-[54px] p-2.5 rounded-2xl border-3 text-left transition-all duration-200 ${
+                        isSelected
+                          ? "bg-[#FFF0F5] border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8] scale-[1.02]"
+                          : "bg-white/80 hover:bg-[#FFF0F5]/50 border-white/90"
+                      }`}
+                    >
+                      <div className="font-heading font-extrabold text-xs text-sweet-text truncate flex items-center justify-between">
+                        <span>{tpl.name}</span>
+                        {isSelected && <span className="text-[#F472B6] text-xs font-bold">✓</span>}
+                      </div>
+                      <div className="text-[11px] font-heading font-semibold text-sweet-muted mt-0.5">
+                        {tpl.photos_required} Foto • {tpl.category || "strip"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div
-              role="group"
-              aria-label="Pilih jumlah foto dalam sesi"
-              className="grid grid-cols-2 gap-2.5"
-            >
-              {posePackages.map((pkg) => {
-                const isSelected =
-                  selectedTemplate.photos_required === pkg.poses;
-                return (
-                  <button
-                    key={pkg.poses}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => handleSelectPoseCount(pkg.poses)}
-                    className={`min-h-[56px] p-3 rounded-2xl border-2 text-left transition-all ${
-                      isSelected
-                        ? "bg-sweet-blush border-sweet-primaryStrong shadow-sm"
-                        : "bg-sweet-bg hover:bg-sweet-blush/40 border-sweet-border"
-                    }`}
-                  >
-                    <div className="font-heading font-bold text-sm text-sweet-text">
-                      {pkg.label}
-                    </div>
-                    <div className="text-xs text-sweet-muted mt-0.5">
-                      {pkg.desc}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Pilihan Warna Frame Awal */}
+            {frameThemes && frameThemes.length > 0 && (
+              <div className="pt-1">
+                <label className="block font-heading font-extrabold text-xs text-sweet-text mb-1.5">
+                  Warna Frame Awal:
+                </label>
+                <div
+                  role="radiogroup"
+                  aria-label="Pilih warna frame awal"
+                  className="flex items-center gap-2 overflow-x-auto kiosk-scroll pb-1"
+                >
+                  {frameThemes.map((theme) => {
+                    const isSelected = selectedFrameColor === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => onSelectFrameColor(theme.id)}
+                        className={`px-3 py-1.5 rounded-full border-3 text-xs font-heading font-extrabold flex items-center gap-1.5 shrink-0 transition-all ${
+                          isSelected
+                            ? "bg-white border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8] text-sweet-text scale-[1.02]"
+                            : "bg-white/75 border-white/80 text-sweet-muted hover:bg-white"
+                        }`}
+                      >
+                        <span
+                          className="size-3.5 rounded-full border border-black/10 shrink-0"
+                          style={{ backgroundColor: theme.hex || "#FFF" }}
+                        />
+                        <span>{theme.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Timer Hitung Mundur Selection (1s, 3s, 5s) */}
             <div className="pt-1">
               <div className="flex items-center justify-between mb-1.5">
-                <label className="font-heading font-bold text-sm text-sweet-text flex items-center gap-1.5">
+                <label className="font-heading font-extrabold text-xs text-sweet-text flex items-center gap-1.5">
                   <SparkleIcon className="size-3.5 text-sweet-primaryStrong" />
                   <span>Timer Hitung Mundur</span>
                 </label>
-                <StatusBadge tone="pink">
+                <span className="px-3 py-1 rounded-full bg-[#DCD6F7] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
                   {selectedCountdownSeconds} Detik
-                </StatusBadge>
+                </span>
               </div>
               <div
                 role="radiogroup"
@@ -233,16 +279,16 @@ export function PreparationScreen({
                       role="radio"
                       aria-checked={isSelected}
                       onClick={() => onSelectCountdownSeconds(item.sec)}
-                      className={`min-h-[52px] p-2 rounded-2xl border-2 text-center transition-all ${
+                      className={`min-h-[50px] p-2 rounded-2xl border-3 text-center transition-all duration-200 ${
                         isSelected
-                          ? "bg-sweet-blush border-sweet-primaryStrong shadow-sm"
-                          : "bg-sweet-bg hover:bg-sweet-blush/40 border-sweet-border"
+                          ? "bg-[#FFF0F5] border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8] scale-[1.02]"
+                          : "bg-white/80 hover:bg-[#FFF0F5]/50 border-white/90"
                       }`}
                     >
-                      <div className="font-heading font-extrabold text-sm text-sweet-text">
+                      <div className="font-heading font-extrabold text-xs text-sweet-text">
                         {item.label}
                       </div>
-                      <div className="text-[11px] text-sweet-muted font-medium mt-0.5">
+                      <div className="text-[10px] text-sweet-muted font-heading font-semibold mt-0.5">
                         {item.desc}
                       </div>
                     </button>
@@ -255,58 +301,44 @@ export function PreparationScreen({
             <div className="pt-1">
               <label
                 htmlFor="customer-caption-input"
-                className="block font-heading font-bold text-sm text-sweet-text mb-1"
+                className="block font-heading font-extrabold text-xs text-sweet-text mb-1"
               >
                 Nama / Catatan di Frame (Opsional)
               </label>
-              <span
-                id="customer-caption-hint"
-                className="block text-xs text-sweet-muted mb-2"
-              >
-                Teks ini akan tercetak manis di bagian bawah frame foto kamu.
-              </span>
               <input
                 id="customer-caption-input"
                 type="text"
                 maxLength={24}
                 autoComplete="nickname"
-                aria-describedby="customer-caption-hint"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Contoh: Rina & Besties ♡"
-                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-sweet-bg border-2 border-sweet-border text-sweet-text placeholder:text-sweet-muted/70 text-sm font-medium focus:border-sweet-primaryStrong"
+                className="w-full min-h-[46px] px-4 py-2 rounded-2xl bg-white/80 border-2 border-white/90 text-sweet-text placeholder:text-sweet-muted/60 text-xs font-heading font-semibold focus:border-[#F472B6] focus:bg-white shadow-xs outline-none transition-colors"
               />
             </div>
 
             {/* Brief Instructions */}
-            <ol className="text-xs text-sweet-muted space-y-1.5 bg-sweet-bg p-3.5 rounded-2xl border border-sweet-border list-decimal list-inside">
+            <ol className="text-xs text-sweet-muted space-y-1 bg-white/60 p-3 rounded-2xl border border-white/80 list-decimal list-inside font-heading font-medium">
               <li>
-                Kamera akan memotret{" "}
-                <strong className="text-sweet-text">
-                  {selectedTemplate.photos_required} kali
-                </strong>{" "}
-                dengan timer{" "}
-                <strong className="text-sweet-text">
-                  {selectedCountdownSeconds} detik
-                </strong>.
+                Kamera akan mengambil <strong className="text-sweet-text font-extrabold">6 foto</strong> dengan timer {selectedCountdownSeconds}d.
               </li>
               <li>
-                Setiap foto memiliki preview 5 detik untuk lanjut atau foto ulang.
+                Kamu bebas memilih <strong className="text-sweet-text font-extrabold">{selectedTemplate.photos_required} foto terbaik</strong> untuk frame ini.
               </li>
               <li>
-                Setelah selesai, kamu bebas memilih warna frame & desain favoritmu!
+                Setelah foto selesai, kamu tetap bisa mengganti desain frame & warna! ♡
               </li>
             </ol>
           </Card>
 
           <Button
-            variant="primary"
+            variant="strong"
             size="xl"
             loading={isBusy}
             disabled={!cameraReady || isBusy}
             onClick={() => onStartCapture(customerName.trim() || undefined)}
-            rightIcon={<FlowerIcon className="size-6 text-sweet-primaryStrong" />}
-            className="w-full min-h-[68px] text-xl shadow-sweetLg border-sweet-primaryStrong"
+            rightIcon={<FlowerIcon className="size-6 text-white" />}
+            className="w-full min-h-[70px] text-xl font-extrabold shadow-sweetLg animate-pulse-cta"
           >
             I&apos;M READY!
           </Button>

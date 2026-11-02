@@ -128,6 +128,8 @@ def process_session(
     session_id: str,
     template_id: str | None = None,
     filter_name: str | None = None,
+    frame_color: str | None = None,
+    selected_photo_ids: list[str] | None = None,
 ):
     manager = get_session_manager()
     session = manager.get_current_session()
@@ -139,7 +141,10 @@ def process_session(
 
     try:
         manager.process_session_photos(
-            template_id=template_id, filter_name=filter_name
+            template_id=template_id,
+            filter_name=filter_name,
+            frame_color=frame_color,
+            selected_photo_ids=selected_photo_ids,
         )
         return SessionDetailResponse(**manager.get_current_session())
     except SessionTransitionError as e:

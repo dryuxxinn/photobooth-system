@@ -29,7 +29,7 @@ class PhotoItem(BaseModel):
 
 class StartSessionRequest(BaseModel):
     customer_name: Optional[str] = None
-    photos_required: Optional[int] = Field(default=3, ge=1, le=10)
+    photos_required: Optional[int] = Field(default=6, ge=1, le=10)
     template_id: Optional[str] = "classic_strip_3"
     frame_color: Optional[str] = "cream"
 
@@ -44,6 +44,7 @@ class ProcessImageRequest(BaseModel):
     filter_name: Optional[str] = None
     frame_color: Optional[str] = None
     custom_text: Optional[str] = None
+    selected_photo_ids: Optional[List[str]] = None
 
 
 class PrintRequest(BaseModel):
@@ -58,6 +59,7 @@ class SessionDetailResponse(BaseModel):
     photos_required: int
     photos_taken: int
     photos: List[PhotoItem] = []
+    selected_photo_ids: Optional[List[str]] = None
     template_id: Optional[str] = None
     filter_name: Optional[str] = "original"
     frame_color: Optional[str] = "cream"

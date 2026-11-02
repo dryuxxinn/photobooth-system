@@ -38,6 +38,7 @@ export interface SessionDetail {
   photos_required: number;
   photos_taken: number;
   photos: PhotoItem[];
+  selected_photo_ids?: string[] | null;
   template_id?: string | null;
   filter_name?: string | null;
   frame_color?: string | null;

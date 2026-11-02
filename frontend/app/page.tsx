@@ -16,6 +16,17 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { AlertIcon, RefreshIcon, SpinnerIcon } from "@/components/icons";
 
+const STEP_ORDER: Record<string, number> = {
+  WELCOME: 0,
+  PREPARATION: 1,
+  CAPTURING: 2,
+  PHOTO_SELECTION: 3,
+  TEMPLATE_SELECTION: 4,
+  PREVIEW: 5,
+  PRINTING: 6,
+  COMPLETION: 7,
+};
+
 export default function KioskHomePage() {
   const {
     state,
@@ -53,6 +64,7 @@ export default function KioskHomePage() {
     retakeCurrentPhoto,
     retryFailedCapture,
     completePhotoSelectionStep,
+    backToPhotoSelection,
     customizePreview,
     printAndFinish,
     finishWithoutPrint,
@@ -63,6 +75,28 @@ export default function KioskHomePage() {
   } = usePhotoboothSession();
 
   const [operatorModalOpen, setOperatorModalOpen] = useState(false);
+  const prevStepRef = React.useRef(kioskStep);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
+
+  React.useEffect(() => {
+    if (prevStepRef.current !== kioskStep) {
+      const prevIdx = STEP_ORDER[prevStepRef.current] ?? 0;
+      const currIdx = STEP_ORDER[kioskStep] ?? 0;
+      const nextDir = currIdx >= prevIdx ? "forward" : "backward";
+      setDirection(nextDir);
+
+      if (typeof document !== "undefined" && "startViewTransition" in document) {
+        try {
+          (document as any).startViewTransition({
+            types: [nextDir],
+          });
+        } catch {
+          // Graceful fallback
+        }
+      }
+      prevStepRef.current = kioskStep;
+    }
+  }, [kioskStep]);
 
   return (
     <main className="h-dvh flex flex-col relative overflow-hidden sweet-bg">
@@ -82,7 +116,7 @@ export default function KioskHomePage() {
         />
       )}
 
-      {/* Top Sweet Studio Header Bar */}
+      {/* Minimal Floating Bottom-Right Status Pill */}
       <TopBar
         kioskStep={kioskStep}
         cameraStatus={cameraStatus}
@@ -115,142 +149,154 @@ export default function KioskHomePage() {
         </div>
       )}
 
-      {/* 1. Welcome Screen (Section 3.A) */}
-      {kioskStep === "WELCOME" && state === "IDLE" && (
-        <WelcomeScreen
-          templates={templates}
-          frameThemes={frameThemes}
-          selectedTemplate={selectedTemplate}
-          selectedFrameColor={selectedFrameColor}
-          cameraConnected={cameraStatus?.connected ?? true}
-          onStartTapped={openPreparationStep}
-        />
-      )}
+      {/* Sliding Scene Container (Geser Halus antar scene) */}
+      <div
+        key={kioskStep}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden ${
+          direction === "forward"
+            ? "animate-slide-in-right"
+            : "animate-slide-in-left"
+        }`}
+      >
+        {/* 1. Welcome Screen (Section 3.A) */}
+        {kioskStep === "WELCOME" && state === "IDLE" && (
+          <WelcomeScreen
+            templates={templates}
+            frameThemes={frameThemes}
+            selectedTemplate={selectedTemplate}
+            selectedFrameColor={selectedFrameColor}
+            cameraConnected={cameraStatus?.connected ?? true}
+            onStartTapped={openPreparationStep}
+          />
+        )}
 
-      {/* 2. Preparation & Package Selection Screen (Section 3.B & 3.C) */}
-      {kioskStep === "PREPARATION" && state === "IDLE" && (
-        <PreparationScreen
-          cameraStatus={cameraStatus}
-          templates={templates}
-          frameThemes={frameThemes}
-          selectedTemplate={selectedTemplate}
-          onSelectTemplate={setSelectedTemplate}
-          selectedFrameColor={selectedFrameColor}
-          onSelectFrameColor={setSelectedFrameColor}
-          selectedCountdownSeconds={selectedCountdownSeconds}
-          onSelectCountdownSeconds={setSelectedCountdownSeconds}
-          cameraSource={webcam.cameraSource}
-          onChangeCameraSource={webcam.setCameraSource}
-          facingMode={webcam.facingMode}
-          onToggleFacingMode={webcam.toggleFacingMode}
-          streamReady={webcam.streamReady}
-          webcamError={webcam.webcamError}
-          deviceLabel={webcam.deviceLabel}
-          attachVideoRef={webcam.attachVideoRef}
-          onRetryWebcam={webcam.retryWebcam}
-          isBusy={isBusy}
-          onBack={backToWelcome}
-          onStartCapture={startBoothSession}
-        />
-      )}
-
-      {/* 3. Countdown & Capture Screen (Section 3.D) */}
-      {(kioskStep === "CAPTURING" ||
-        state === "STARTED" ||
-        state === "CAPTURING") &&
-        session && (
-          <CountdownOverlay
-            session={session}
-            countdown={countdown}
-            reviewCountdown={reviewCountdown}
-            onProceedNext={proceedFromReview}
-            onRetakeCurrent={retakeCurrentPhoto}
-            isBusy={isBusy}
-            captureError={captureError}
+        {/* 2. Preparation & Package Selection Screen (Section 3.B & 3.C) */}
+        {kioskStep === "PREPARATION" && state === "IDLE" && (
+          <PreparationScreen
+            cameraStatus={cameraStatus}
+            templates={templates}
+            frameThemes={frameThemes}
+            selectedTemplate={selectedTemplate}
+            onSelectTemplate={setSelectedTemplate}
+            selectedFrameColor={selectedFrameColor}
+            onSelectFrameColor={setSelectedFrameColor}
+            selectedCountdownSeconds={selectedCountdownSeconds}
+            onSelectCountdownSeconds={setSelectedCountdownSeconds}
             cameraSource={webcam.cameraSource}
+            onChangeCameraSource={webcam.setCameraSource}
             facingMode={webcam.facingMode}
+            onToggleFacingMode={webcam.toggleFacingMode}
             streamReady={webcam.streamReady}
             webcamError={webcam.webcamError}
             deviceLabel={webcam.deviceLabel}
             attachVideoRef={webcam.attachVideoRef}
-            onRetryCapture={retryFailedCapture}
-            onAbort={abortCurrentSession}
+            onRetryWebcam={webcam.retryWebcam}
+            isBusy={isBusy}
+            onBack={backToWelcome}
+            onStartCapture={startBoothSession}
           />
         )}
 
-      {/* Interstitial Processing State */}
-      {state === "PROCESSING" && (
-        <section className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <Card
-            variant="surface"
-            padding="lg"
-            className="max-w-md w-full flex flex-col items-center space-y-4"
-          >
-            <div className="size-20 rounded-full bg-sweet-blush border-2 border-sweet-primary flex items-center justify-center">
-              <SpinnerIcon className="size-10 text-sweet-primaryStrong" />
-            </div>
-            <h2 className="text-2xl font-heading font-extrabold text-sweet-text">
-              Menyusun Strip Foto Manismu...
-            </h2>
-            <p className="text-sm text-sweet-muted">
-              Menggabungkan foto ke dalam frame dengan kualitas cetak tinggi ✨
-            </p>
-          </Card>
-        </section>
-      )}
+        {/* 3. Countdown & Capture Screen (Section 3.D) */}
+        {(kioskStep === "CAPTURING" ||
+          state === "STARTED" ||
+          state === "CAPTURING") &&
+          session && (
+            <CountdownOverlay
+              session={session}
+              countdown={countdown}
+              reviewCountdown={reviewCountdown}
+              onProceedNext={proceedFromReview}
+              onRetakeCurrent={retakeCurrentPhoto}
+              isBusy={isBusy}
+              captureError={captureError}
+              cameraSource={webcam.cameraSource}
+              facingMode={webcam.facingMode}
+              streamReady={webcam.streamReady}
+              webcamError={webcam.webcamError}
+              deviceLabel={webcam.deviceLabel}
+              attachVideoRef={webcam.attachVideoRef}
+              onRetryCapture={retryFailedCapture}
+              onAbort={abortCurrentSession}
+            />
+          )}
 
-      {/* 4. Photo Selection Screen (Section 3.E) */}
-      {kioskStep === "PHOTO_SELECTION" &&
-        state === "PREVIEW" &&
-        session && (
-          <PhotoSelection
-            session={session}
-            onContinue={() => completePhotoSelectionStep()}
-          />
+        {/* Interstitial Processing State */}
+        {state === "PROCESSING" && (
+          <section className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <Card
+              variant="glass"
+              padding="lg"
+              className="max-w-md w-full flex flex-col items-center space-y-4"
+            >
+              <div className="size-20 rounded-full bg-gradient-to-tr from-[#FBCFE8] to-[#F472B6] flex items-center justify-center shadow-sweet animate-bounce">
+                <SpinnerIcon className="size-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-heading font-extrabold text-[#3F3D56]">
+                Menyusun Strip Foto Manismu...
+              </h2>
+              <p className="text-sm font-heading font-semibold text-sweet-muted">
+                Menggabungkan foto ke dalam frame dengan kualitas cetak tinggi ✨
+              </p>
+            </Card>
+          </section>
         )}
 
-      {/* 5. Template Selection Screen (Section 3.F) */}
-      {kioskStep === "TEMPLATE_SELECTION" &&
-        state === "PREVIEW" &&
-        session && (
-          <TemplateSelector
+        {/* 4. Photo Selection Screen (Section 3.E) */}
+        {kioskStep === "PHOTO_SELECTION" &&
+          state === "PREVIEW" &&
+          session && (
+            <PhotoSelection
+              session={session}
+              template={selectedTemplate}
+              onContinue={(selectedIds) => completePhotoSelectionStep(selectedIds)}
+            />
+          )}
+
+        {/* 5. Template Selection Screen (Section 3.F) */}
+        {kioskStep === "TEMPLATE_SELECTION" &&
+          state === "PREVIEW" &&
+          session && (
+            <TemplateSelector
+              session={session}
+              templates={templates}
+              frameThemes={frameThemes}
+              isBusy={isBusy}
+              onApplyAndContinue={customizePreview}
+            />
+          )}
+
+        {/* 6. Final Preview Screen (Section 3.G) */}
+        {kioskStep === "PREVIEW" && state === "PREVIEW" && session && (
+          <PhotoPreview
             session={session}
             templates={templates}
             frameThemes={frameThemes}
             isBusy={isBusy}
-            onApplyAndContinue={customizePreview}
+            imageVersion={imageVersion}
+            onOpenChangeFrame={() => setKioskStep("TEMPLATE_SELECTION")}
+            onBackToPhotoSelection={backToPhotoSelection}
+            onPrint={printAndFinish}
+            onFinishWithoutPrint={finishWithoutPrint}
           />
         )}
 
-      {/* 6. Final Preview Screen (Section 3.G) */}
-      {kioskStep === "PREVIEW" && state === "PREVIEW" && session && (
-        <PhotoPreview
-          session={session}
-          templates={templates}
-          frameThemes={frameThemes}
-          isBusy={isBusy}
-          imageVersion={imageVersion}
-          onOpenChangeFrame={() => setKioskStep("TEMPLATE_SELECTION")}
-          onPrint={printAndFinish}
-          onFinishWithoutPrint={finishWithoutPrint}
-        />
-      )}
+        {/* 7. Printing Screen (Section 3.H) */}
+        {(kioskStep === "PRINTING" || state === "PRINTING") && (
+          <PrintingScreen
+            printerStatus={printerStatus}
+            copies={printCopies}
+          />
+        )}
 
-      {/* 7. Printing Screen (Section 3.H) */}
-      {(kioskStep === "PRINTING" || state === "PRINTING") && (
-        <PrintingScreen
-          printerStatus={printerStatus}
-          copies={printCopies}
-        />
-      )}
-
-      {/* 8. Completion Screen (Section 3.I) */}
-      {kioskStep === "COMPLETION" && (
-        <CompletionScreen
-          completedSession={completedSession}
-          onStartAgain={resetToWelcomeFromCompletion}
-        />
-      )}
+        {/* 8. Completion Screen (Section 3.I) */}
+        {kioskStep === "COMPLETION" && (
+          <CompletionScreen
+            completedSession={completedSession}
+            onStartAgain={resetToWelcomeFromCompletion}
+          />
+        )}
+      </div>
 
       {/* Exception Recovery Screen if session is in ERROR outside capture loop */}
       {state === "ERROR" && !captureError && (

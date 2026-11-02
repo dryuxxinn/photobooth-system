@@ -63,43 +63,48 @@ export function CountdownOverlay({
   return (
     <section
       aria-labelledby="capture-heading"
-      className="flex-1 min-h-0 flex flex-col items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3.5 overflow-y-auto kiosk-scroll animate-screen-fade"
+      className="flex-1 min-h-0 flex flex-col items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3.5 overflow-y-auto kiosk-scroll relative"
     >
-      {/* Top Pose Header */}
-      <div className="text-center space-y-1">
-        <div className="flex items-center justify-center gap-3">
+      {/* Dimmed focused background backdrop */}
+      <div className="fixed inset-0 bg-black/15 pointer-events-none z-0" />
+
+      {/* Top Pose Header with Unobstructed Timer */}
+      <div className="text-center space-y-1 z-10 w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto">
+        <div className="inline-flex items-center gap-3 sm:gap-4 px-6 sm:px-8 py-2 sm:py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-white/90 shadow-sweet">
           <h1
             id="capture-heading"
-            className="font-heading font-extrabold text-2xl md:text-3xl tracking-wider text-sweet-text"
+            className="font-heading font-extrabold text-2xl sm:text-3xl tracking-wider text-[#3F3D56]"
           >
             {isReviewing
-              ? `PHOTO ${session.photos_taken} OF ${session.photos_required} • PREVIEW`
+              ? `PHOTO ${session.photos_taken} OF ${session.photos_required}`
               : `PHOTO ${currentPoseNumber} OF ${session.photos_required}`}
           </h1>
+
+          {/* Countdown Timer Badge in Header - NOT blocking the camera preview! */}
           {countdown !== null && countdown > 0 && !isReviewing && (
-            <span
+            <div
               key={countdown}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sweet-blush border-2 border-sweet-primaryStrong text-sweet-text font-heading font-extrabold text-base sm:text-lg shadow-sm animate-sticker-pop"
+              className="px-4 py-1 sm:px-5 sm:py-1 rounded-full bg-gradient-to-r from-[#F472B6] to-[#EC4899] text-white font-heading font-extrabold text-2xl sm:text-3xl shadow-glow animate-bubble-pop flex items-center gap-2"
             >
-              <span className="size-2 rounded-full bg-sweet-primaryStrong animate-ping" />
+              <span className="text-xl sm:text-2xl animate-pulse">⏱</span>
               <span>{countdown}s</span>
-            </span>
+            </div>
           )}
         </div>
-        <p className="text-sm font-heading font-semibold text-sweet-muted flex items-center justify-center gap-1.5">
+        <p className="text-xs sm:text-sm font-heading font-semibold text-sweet-muted flex items-center justify-center gap-1.5 pt-0.5">
           <span>
             {isReviewing
-              ? "Tinjau hasil foto — Pilih lanjut atau foto ulang"
+              ? "Tinjau hasil foto — Pilih lanjut atau foto ulang ♡"
               : countdown !== null && countdown > 0
-              ? `Senyum manis ke kamera! Mengambil foto dalam ${countdown} detik ♡`
-              : "Get ready to pose!"}
+              ? `Senyum manis ke kamera! Foto diambil dalam ${countdown} detik ✨`
+              : "Bersiap berpose! ♡"}
           </span>
           <HeartIcon className="size-4 text-sweet-primaryStrong" />
         </p>
       </div>
 
-      {/* Main Focused Camera Preview Stage with Countdown Overlay */}
-      <div className="w-full flex flex-col items-center justify-center my-1 sm:my-2">
+      {/* Main Focused Camera Preview Stage - Expanded to feel immersive / full screen */}
+      <div className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 z-10">
         <CameraPreview
           cameraStatus={null}
           latestPhoto={latestPhoto}
@@ -113,75 +118,8 @@ export function CountdownOverlay({
           webcamError={webcamError}
           deviceLabel={deviceLabel}
           attachVideoRef={attachVideoRef}
+          className="w-full h-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex flex-col items-center justify-center"
         >
-          {/* 5-Second Review Intermission Overlay (Compact slim bar at bottom, leaving photo 100% visible) */}
-          {isReviewing && !captureError && (
-            <div className="absolute inset-x-2.5 bottom-2.5 sm:inset-x-4 sm:bottom-3 z-30">
-              <div className="py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-2xl bg-white/95 backdrop-blur-md border-2 border-sweet-primaryStrong shadow-sweet flex flex-col sm:flex-row items-center justify-between gap-2 animate-screen-fade">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-8 sm:size-9 shrink-0 flex items-center justify-center rounded-xl bg-sweet-blush border-2 border-sweet-primaryStrong font-heading font-extrabold text-sweet-text text-sm sm:text-base shadow-xs">
-                    {reviewCountdown}s
-                  </div>
-                  <div className="text-left">
-                    <span className="font-heading font-extrabold text-xs sm:text-sm text-sweet-text block">
-                      Foto #{session.photos_taken} Tersimpan ✓
-                    </span>
-                    <span className="text-[11px] text-sweet-muted block">
-                      Auto-next {reviewCountdown} detik
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                  <Button
-                    variant="surface"
-                    size="md"
-                    onClick={onRetakeCurrent}
-                    disabled={isBusy}
-                    leftIcon={<RefreshIcon className="size-3.5 text-sweet-error" />}
-                    className="flex-1 sm:flex-initial min-h-[38px] px-3.5 border-2 border-sweet-border hover:border-sweet-error text-sweet-text hover:text-sweet-error font-heading font-bold text-xs"
-                  >
-                    Foto Ulang
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    onClick={onProceedNext}
-                    disabled={isBusy}
-                    rightIcon={
-                      <HeartIcon className="size-3.5 text-sweet-primaryStrong" />
-                    }
-                    className="flex-1 sm:flex-initial min-h-[38px] px-4 shadow-sweet font-heading font-extrabold text-xs"
-                  >
-                    {session.photos_taken >= session.photos_required
-                      ? "Selesai & Frame ➔"
-                      : "Lanjut (Next) ➔"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Non-obstructive Top Countdown Badge inside Camera (Top headroom, NOT covering the user's face) */}
-          {countdown !== null &&
-            countdown > 0 &&
-            !captureError &&
-            !isReviewing && (
-              <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-                <div
-                  key={countdown}
-                  className="px-5 py-1.5 rounded-full bg-white/95 backdrop-blur-xs border-2 border-sweet-primaryStrong shadow-sweet flex items-center gap-2.5 animate-sticker-pop"
-                >
-                  <span className="size-2.5 rounded-full bg-sweet-primaryStrong animate-ping" />
-                  <span className="font-heading font-extrabold text-sweet-text text-2xl leading-none">
-                    {countdown}
-                  </span>
-                  <span className="font-heading font-bold text-xs text-sweet-muted uppercase tracking-wider">
-                    detik
-                  </span>
-                </div>
-              </div>
-            )}
 
           {/* Capturing / Downloading confirmation state */}
           {(countdown === 0 || (isBusy && !captureError)) && !isReviewing && (
@@ -244,7 +182,7 @@ export function CountdownOverlay({
       </div>
 
       {/* Bottom Progress Indicator & Action Strip */}
-      <div className="w-full max-w-xl md:max-w-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex flex-col sm:flex-row items-center justify-between gap-3 z-10 px-2">
         <ProgressIndicator
           current={session.photos_taken}
           total={session.photos_required}
@@ -252,29 +190,41 @@ export function CountdownOverlay({
         />
 
         {isReviewing ? (
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <Button
-              variant="surface"
-              size="md"
-              onClick={onRetakeCurrent}
-              disabled={isBusy}
-              leftIcon={<RefreshIcon className="size-4 text-sweet-error" />}
-              className="flex-1 sm:flex-initial min-h-[44px] border-2 border-sweet-border hover:border-sweet-error text-sweet-text hover:text-sweet-error font-heading font-bold"
-            >
-              Foto Ulang ↺
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={onProceedNext}
-              disabled={isBusy}
-              rightIcon={<HeartIcon className="size-4 text-sweet-primaryStrong" />}
-              className="flex-1 sm:flex-initial min-h-[44px] font-heading font-extrabold shadow-sweet"
-            >
-              {session.photos_taken >= session.photos_required
-                ? `Selesai & Frame (${reviewCountdown}s) ➔`
-                : `Lanjut (${reviewCountdown}s) ➔`}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto animate-screen-fade">
+            {/* Auto-next Timer Badge */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border-2 border-[#F472B6] shadow-sweet">
+              <span className="size-2.5 rounded-full bg-[#F472B6] animate-ping" />
+              <span className="font-heading font-extrabold text-xs sm:text-sm text-[#3F3D56]">
+                Foto #{session.photos_taken} Tersimpan • Auto-next:{" "}
+                <span className="text-[#F472B6] font-black">{reviewCountdown}s</span>
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="surface"
+                size="md"
+                onClick={onRetakeCurrent}
+                disabled={isBusy}
+                leftIcon={<RefreshIcon className="size-4 text-sweet-error" />}
+                className="min-h-[44px] px-4 rounded-full border-2 border-sweet-border hover:border-sweet-error text-sweet-text hover:text-sweet-error font-heading font-bold text-xs sm:text-sm active:scale-95 transition-all"
+              >
+                Foto Ulang ↺
+              </Button>
+              <Button
+                variant="strong"
+                size="md"
+                onClick={onProceedNext}
+                disabled={isBusy}
+                rightIcon={<HeartIcon className="size-4 text-white" />}
+                className="min-h-[44px] px-5 sm:px-6 rounded-full font-heading font-extrabold text-xs sm:text-sm shadow-sweet active:scale-95 transition-all"
+              >
+                {session.photos_taken >= session.photos_required
+                  ? `Selesai & Frame (${reviewCountdown}s) ➔`
+                  : `Lanjut (${reviewCountdown}s) ➔`}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-3">
@@ -284,6 +234,7 @@ export function CountdownOverlay({
               onClick={onAbort}
               disabled={isBusy && !captureError}
               leftIcon={<CameraIcon className="size-4" />}
+              className="rounded-full text-sweet-muted hover:text-sweet-text"
             >
               Batalkan Sesi
             </Button>

@@ -26,6 +26,7 @@ import {
   PlusIcon,
   PrinterIcon,
   QrIcon,
+  RefreshIcon,
   SpinnerIcon,
 } from "@/components/icons";
 
@@ -36,6 +37,7 @@ interface PhotoPreviewProps {
   isBusy: boolean;
   imageVersion: number;
   onOpenChangeFrame: () => void;
+  onBackToPhotoSelection?: () => void;
   onPrint: (copies: number) => Promise<void>;
   onFinishWithoutPrint: () => Promise<void>;
 }
@@ -49,6 +51,7 @@ export function PhotoPreview({
   isBusy,
   imageVersion,
   onOpenChangeFrame,
+  onBackToPhotoSelection,
   onPrint,
   onFinishWithoutPrint,
 }: PhotoPreviewProps) {
@@ -128,247 +131,278 @@ export function PhotoPreview({
   return (
     <section
       aria-labelledby="preview-heading"
-      className="flex-1 min-h-0 flex flex-col justify-between px-6 py-4 overflow-y-auto kiosk-scroll animate-screen-fade"
+      className="flex-1 min-h-0 flex flex-col justify-between px-4 sm:px-8 py-4 overflow-y-auto kiosk-scroll animate-screen-fade relative"
     >
-      {/* Idle Timeout Warning Banner (Section 6.C) */}
+      {/* Idle Timeout Warning Banner */}
       {secondsLeft <= PREVIEW_IDLE_WARN_SECONDS && (
         <div
           role="alert"
-          className="max-w-4xl w-full mx-auto mb-2 px-5 py-3 rounded-2xl bg-[#FCECEE] border-2 border-[#EABAC0] flex items-center justify-between gap-4"
+          className="max-w-4xl w-full mx-auto mb-2 px-5 py-2.5 rounded-full bg-[#FCECEE] border-2 border-[#EABAC0] flex items-center justify-between gap-4 shadow-sweet z-30"
         >
-          <div className="flex items-center gap-2.5 text-sm font-heading font-bold text-sweet-error">
-            <AlertIcon className="size-5 shrink-0" />
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-heading font-bold text-sweet-error">
+            <AlertIcon className="size-4 shrink-0" />
             <span>
-              Sesi akan otomatis selesai dalam {secondsLeft} detik karena tidak
-              ada aktivitas.
+              Sesi otomatis selesai dalam {secondsLeft} detik karena tidak ada aktivitas.
             </span>
           </div>
-          <Button variant="surface" size="md" onClick={resetTimer}>
+          <Button variant="surface" size="sm" onClick={resetTimer}>
             Tetap di Sini
           </Button>
         </div>
       )}
 
-      {/* Top Header & Segmented View Mode */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-5xl w-full mx-auto">
-        <div>
-          <h1
-            id="preview-heading"
-            className="font-heading font-extrabold text-2xl md:text-3xl text-sweet-text flex items-center gap-2"
-          >
-            <span>YOUR MEMORIES</span>
-            <HeartIcon className="size-6 text-sweet-primaryStrong" />
-          </h1>
-          <p className="text-xs md:text-sm text-sweet-muted">
-            {activeTemplate?.name || "Sweet Strip"} • Frame{" "}
-            {activeTheme?.name || "Sweet Pink"}
-          </p>
-        </div>
-
-        {/* Accessible Segmented Toggle Buttons using aria-pressed */}
-        <div
-          role="group"
-          aria-label="Mode tampilan preview"
-          className="inline-flex items-center p-1.5 rounded-full bg-sweet-surface border-2 border-sweet-border shadow-sweet gap-1"
-        >
-          {(
-            [
-              { id: "composite", label: "Hasil Cetak" },
-              { id: "slideshow", label: "Slideshow" },
-              { id: "originals", label: "Foto Asli" },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              aria-pressed={viewTab === tab.id}
-              onClick={() => setViewTab(tab.id)}
-              className={`min-h-[42px] px-4 py-1.5 rounded-full font-heading font-bold text-xs transition-all ${
-                viewTab === tab.id
-                  ? "bg-sweet-primary text-sweet-text shadow-sm"
-                  : "text-sweet-muted hover:text-sweet-text"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Preview Stage */}
-      <div className="relative flex-1 min-h-[300px] max-w-5xl w-full mx-auto my-2.5 flex items-center justify-center">
-        <Card
-          variant="surface"
-          padding="sm"
-          className="relative w-full h-full max-h-[60dvh] flex flex-col items-center justify-center overflow-hidden bg-sweet-bg/70"
-        >
-          {isBusy && (
-            <div className="absolute inset-0 bg-sweet-surface/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3">
-              <SpinnerIcon className="size-10 text-sweet-primaryStrong" />
-              <p className="font-heading font-bold text-base text-sweet-text">
-                Memperbarui Komposisi Foto...
-              </p>
-            </div>
-          )}
-
-          {viewTab === "composite" && (
-            <div className="h-full flex items-center justify-center p-2">
-              {compositeUrl ? (
-                <img
-                  src={compositeUrl}
-                  alt="Hasil akhir komposisi photostrip siap cetak"
-                  className="max-h-[54dvh] w-auto object-contain rounded-2xl shadow-sweetLg border border-sweet-border"
-                />
-              ) : (
-                <p className="text-sm text-sweet-muted">
-                  Memuat hasil komposisi foto...
+      {/* Main 2-Column Side-by-Side Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center max-w-7xl w-full mx-auto my-auto py-2 z-10">
+        {/* Kolom Kiri: Live Photo Strip Preview (Large, Clean, No Massive Empty Box) */}
+        <div className="lg:col-span-6 xl:col-span-5 flex flex-col items-center justify-center animate-container-left">
+          <div className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white/85 backdrop-blur-md border-2 border-white/90 shadow-sweet-strip flex flex-col items-center justify-center transition-all duration-300">
+            {isBusy && (
+              <div className="absolute inset-0 bg-sweet-surface/85 backdrop-blur-sm z-20 rounded-[2.5rem] flex flex-col items-center justify-center gap-3">
+                <SpinnerIcon className="size-10 text-sweet-primaryStrong animate-spin" />
+                <p className="font-heading font-extrabold text-sm text-sweet-text">
+                  Memperbarui Komposisi Foto...
                 </p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {viewTab === "slideshow" && session.photos.length > 0 && (
-            <div className="relative h-full flex flex-col items-center justify-center gap-3 p-2">
-              <img
-                src={resolveStorageUrl(
-                  session.photos[slideIndex]?.preview_url ||
-                    session.photos[slideIndex]?.thumbnail_url ||
-                    session.photos[slideIndex]?.original_url
+            {/* View Tab Content */}
+            {viewTab === "composite" && (
+              <div className="flex items-center justify-center">
+                {compositeUrl ? (
+                  <img
+                    src={compositeUrl}
+                    alt="Hasil akhir komposisi photostrip siap cetak"
+                    className="max-h-[72dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm font-heading font-bold text-sweet-muted">
+                      Memuat hasil komposisi foto...
+                    </p>
+                  </div>
                 )}
-                alt={`Slideshow pose ke-${slideIndex + 1}`}
-                className="max-h-[44dvh] w-auto object-contain rounded-2xl shadow-sweetLg border-2 border-sweet-primary"
-              />
-              <div className="flex items-center gap-3">
+              </div>
+            )}
+
+            {viewTab === "slideshow" && session.photos.length > 0 && (
+              <div className="flex flex-col items-center justify-center gap-3 py-2">
+                <img
+                  src={resolveStorageUrl(
+                    session.photos[slideIndex]?.preview_url ||
+                      session.photos[slideIndex]?.thumbnail_url ||
+                      session.photos[slideIndex]?.original_url
+                  )}
+                  alt={`Slideshow pose ke-${slideIndex + 1}`}
+                  className="max-h-[62dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
+                />
+                <div className="flex items-center gap-2.5 pt-1">
+                  <Button
+                    variant="surface"
+                    size="sm"
+                    onClick={() => setSlidePaused((p) => !p)}
+                    leftIcon={
+                      slidePaused ? (
+                        <PlayIcon className="size-3.5" />
+                      ) : (
+                        <PauseIcon className="size-3.5" />
+                      )
+                    }
+                  >
+                    {slidePaused ? "Putar" : "Jeda"}
+                  </Button>
+                  <StatusBadge tone="pink">
+                    Pose {slideIndex + 1} / {session.photos.length}
+                  </StatusBadge>
+                </div>
+              </div>
+            )}
+
+            {viewTab === "originals" && (
+              <div className="grid grid-cols-2 gap-2.5 p-1 max-h-[68dvh] overflow-y-auto kiosk-scroll">
+                {session.photos.map((p) => (
+                  <div
+                    key={p.id}
+                    className="rounded-2xl overflow-hidden border-2 border-sweet-border bg-white shadow-xs"
+                  >
+                    <img
+                      src={resolveStorageUrl(
+                        p.preview_url || p.thumbnail_url || p.original_url
+                      )}
+                      alt={`Foto asli pose ke-${p.index}`}
+                      className="w-full aspect-[3/2] object-cover"
+                    />
+                    <div className="px-2 py-1 text-[11px] font-heading font-bold text-sweet-text text-center bg-sweet-surface">
+                      Pose #{p.index}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Corner Decorative Heart Pin Badge */}
+            <div className="absolute -top-2 -right-2 size-9 rounded-full bg-gradient-to-tr from-[#FBCFE8] to-[#F472B6] flex items-center justify-center text-white shadow-sweet animate-bounce">
+              <HeartIcon className="size-4" />
+            </div>
+          </div>
+        </div>
+
+        {/* Kolom Kanan: Panel Kontrol & Pengaturan Cetak (Glassmorphic Action Card) */}
+        <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-center animate-container-right">
+          <Card
+            variant="glass"
+            padding="lg"
+            className="space-y-4 shadow-sweet-card"
+          >
+            {/* Header: Judul & Info Frame */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/60 pb-3">
+              <div>
+                <h1
+                  id="preview-heading"
+                  className="font-heading font-extrabold text-2xl sm:text-3xl text-[#3F3D56] flex items-center gap-2"
+                >
+                  <span>YOUR MEMORIES</span>
+                  <HeartIcon className="size-6 text-[#F472B6]" />
+                </h1>
+                <p className="text-xs sm:text-sm text-sweet-muted font-heading font-semibold">
+                  {activeTemplate?.name || "Sweet Strip"} • Frame{" "}
+                  {activeTheme?.name || "Sweet Pink"}
+                </p>
+              </div>
+
+              {/* Segmented Mode Selector */}
+              <div
+                role="group"
+                aria-label="Mode tampilan preview"
+                className="inline-flex items-center p-1 rounded-full bg-white/80 border border-white/90 shadow-xs gap-1"
+              >
+                {(
+                  [
+                    { id: "composite", label: "Hasil Cetak" },
+                    { id: "slideshow", label: "Slideshow" },
+                    { id: "originals", label: "Foto Asli" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    aria-pressed={viewTab === tab.id}
+                    onClick={() => setViewTab(tab.id)}
+                    className={`min-h-[38px] px-3.5 rounded-full font-heading font-bold text-xs transition-all ${
+                      viewTab === tab.id
+                        ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
+                        : "text-sweet-muted hover:text-sweet-text"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tombol Alat / Tools Row */}
+            <div className="space-y-2">
+              <label className="text-xs font-heading font-bold text-sweet-muted uppercase tracking-wider block">
+                Opsi & Kustomisasi
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {onBackToPhotoSelection && (
+                  <Button
+                    variant="surface"
+                    size="md"
+                    disabled={isBusy}
+                    leftIcon={<RefreshIcon className="size-4 text-sweet-muted" />}
+                    onClick={onBackToPhotoSelection}
+                    className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
+                  >
+                    PILIH ULANG FOTO
+                  </Button>
+                )}
+
+                <Button
+                  variant="secondary"
+                  size="md"
+                  disabled={isBusy}
+                  leftIcon={<PaletteIcon className="size-4 text-sweet-primaryStrong" />}
+                  onClick={onOpenChangeFrame}
+                  className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
+                >
+                  GANTI FRAME
+                </Button>
+
                 <Button
                   variant="surface"
                   size="md"
-                  onClick={() => setSlidePaused((p) => !p)}
-                  leftIcon={
-                    slidePaused ? (
-                      <PlayIcon className="size-4" />
-                    ) : (
-                      <PauseIcon className="size-4" />
-                    )
-                  }
+                  disabled={isBusy}
+                  leftIcon={<QrIcon className="size-4 text-sweet-primaryStrong" />}
+                  onClick={() => setQrOpen(true)}
+                  className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
                 >
-                  {slidePaused ? "Putar Slideshow" : "Jeda Slideshow"}
+                  KODE QR & SHARE
                 </Button>
-                <StatusBadge tone="pink">
-                  Pose {slideIndex + 1} / {session.photos.length}
-                </StatusBadge>
               </div>
             </div>
-          )}
 
-          {viewTab === "originals" && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-2 max-h-[52dvh] overflow-y-auto kiosk-scroll">
-              {session.photos.map((p) => (
+            {/* Print Section Box */}
+            <div className="p-4 rounded-3xl bg-white/70 border border-white/90 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-heading font-extrabold text-sm text-[#3F3D56]">
+                  Jumlah Salinan Cetak
+                </span>
                 <div
-                  key={p.id}
-                  className="rounded-2xl overflow-hidden border-2 border-sweet-border bg-white shadow-sm"
+                  role="group"
+                  aria-label="Jumlah cetakan"
+                  className="inline-flex items-center gap-2 bg-sweet-bg px-3 py-1.5 rounded-full border border-sweet-border"
                 >
-                  <img
-                    src={resolveStorageUrl(
-                      p.preview_url || p.thumbnail_url || p.original_url
-                    )}
-                    alt={`Foto asli pose ke-${p.index}`}
-                    className="w-full aspect-[3/2] object-cover"
-                  />
-                  <div className="px-3 py-1.5 text-xs font-heading font-bold text-sweet-text text-center">
-                    Pose #{p.index}
-                  </div>
+                  <button
+                    type="button"
+                    aria-label="Kurangi jumlah cetakan"
+                    disabled={copies <= 1 || isBusy}
+                    onClick={() => setCopies((c) => Math.max(1, c - 1))}
+                    className="size-8 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
+                  >
+                    <MinusIcon className="size-3.5" />
+                  </button>
+                  <span className="font-heading font-extrabold text-sm text-sweet-text min-w-[64px] text-center">
+                    {copies} Lembar
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Tambah jumlah cetakan"
+                    disabled={copies >= 5 || isBusy}
+                    onClick={() => setCopies((c) => Math.min(5, c + 1))}
+                    className="size-8 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
+                  >
+                    <PlusIcon className="size-3.5" />
+                  </button>
                 </div>
-              ))}
+              </div>
+
+              {/* Big Pulsating Print Button */}
+              <Button
+                variant="strong"
+                size="xl"
+                loading={isBusy}
+                disabled={isBusy}
+                leftIcon={<PrinterIcon className="size-6 text-white" />}
+                onClick={() => onPrint(copies)}
+                className="w-full min-h-[66px] text-xl font-heading font-extrabold shadow-sweet-strip rounded-full animate-pulse-cta active:scale-95 transition-all duration-300"
+              >
+                PRINT SEKARANG!
+              </Button>
+
+              <div className="text-center pt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={onFinishWithoutPrint}
+                  className="text-xs font-heading font-semibold text-sweet-muted hover:text-sweet-text"
+                >
+                  Selesai tanpa cetak
+                </Button>
+              </div>
             </div>
-          )}
-        </Card>
-
-        {shareToast && (
-          <div
-            role="status"
-            className="absolute bottom-4 px-5 py-2.5 rounded-full bg-sweet-success text-white font-heading font-bold text-xs shadow-sweetLg"
-          >
-            {shareToast}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Floating Action Bar (Section 3.G: [ CHANGE FRAME ]  [ PRINT! ]) */}
-      <div className="max-w-5xl w-full mx-auto bg-sweet-surface/95 border-2 border-sweet-border rounded-full px-4 py-2.5 shadow-sweetLg flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="md"
-            disabled={isBusy}
-            leftIcon={<PaletteIcon className="size-4" />}
-            onClick={onOpenChangeFrame}
-            className="min-h-[52px]"
-          >
-            CHANGE FRAME
-          </Button>
-
-          <Button
-            variant="surface"
-            size="md"
-            disabled={isBusy}
-            leftIcon={<QrIcon className="size-4" />}
-            onClick={() => setQrOpen(true)}
-            className="min-h-[52px]"
-          >
-            Kode QR & Bagikan
-          </Button>
-        </div>
-
-        {/* Copies Stepper + Primary PRINT! + Finish Without Print */}
-        <div className="flex items-center gap-2.5">
-          <div
-            role="group"
-            aria-label="Jumlah cetakan"
-            className="inline-flex items-center gap-1.5 bg-sweet-bg px-2.5 py-1 rounded-full border-2 border-sweet-border"
-          >
-            <button
-              type="button"
-              aria-label="Kurangi jumlah cetakan"
-              disabled={copies <= 1 || isBusy}
-              onClick={() => setCopies((c) => Math.max(1, c - 1))}
-              className="size-9 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border"
-            >
-              <MinusIcon className="size-3.5" />
-            </button>
-            <span className="px-1.5 font-heading font-extrabold text-xs text-sweet-text min-w-[58px] text-center">
-              {copies} Cetak
-            </span>
-            <button
-              type="button"
-              aria-label="Tambah jumlah cetakan"
-              disabled={copies >= 5 || isBusy}
-              onClick={() => setCopies((c) => Math.min(5, c + 1))}
-              className="size-9 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border"
-            >
-              <PlusIcon className="size-3.5" />
-            </button>
-          </div>
-
-          <Button
-            variant="primary"
-            size="xl"
-            loading={isBusy}
-            disabled={isBusy}
-            leftIcon={<PrinterIcon className="size-5 text-sweet-text" />}
-            onClick={() => onPrint(copies)}
-            className="min-h-[64px] px-7 text-lg border-sweet-primaryStrong shadow-sweetLg"
-          >
-            PRINT!
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="md"
-            disabled={isBusy}
-            onClick={onFinishWithoutPrint}
-          >
-            Selesai
-          </Button>
+          </Card>
         </div>
       </div>
 

@@ -92,23 +92,23 @@ export function TemplateSelector({
       {/* Main 2-Column Selector Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-6xl w-full mx-auto my-3 items-start">
         {/* Left: Composite Template Cards & Frame Themes */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-8 space-y-4 animate-container-left">
           {/* 1. Layout Template Cards with Real Composite Preview */}
-          <Card variant="surface" padding="sm" className="space-y-3">
+          <Card variant="glass" padding="sm" className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-heading font-bold text-base text-sweet-text flex items-center gap-2">
+              <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
                 <FlowerIcon className="size-4 text-sweet-primaryStrong" />
                 <span>1. Pilih Desain & Ukuran Cetak ({session.photos.length} Pose)</span>
               </h2>
-              <StatusBadge tone="pink">
+              <span className="px-3 py-1 rounded-full bg-[#FBCFE8] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
                 {activeTemplate?.aspect_label || "2x6 Strip"}
-              </StatusBadge>
+              </span>
             </div>
 
             <div
               role="group"
               aria-label="Pilihan template desain foto"
-              className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto kiosk-scroll pr-1"
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[310px] overflow-y-auto kiosk-scroll pr-1"
             >
               {displayTemplates.map((tpl) => {
                 const isSelected = tpl.id === draftTemplateId;
@@ -118,10 +118,10 @@ export function TemplateSelector({
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => handleSelectTemplateCard(tpl)}
-                    className={`p-3 rounded-2xl border-2 text-left transition-all flex flex-col items-center gap-2 ${
+                    className={`p-3 rounded-2xl border-3 text-left transition-all flex flex-col items-center gap-2 ${
                       isSelected
-                        ? "bg-sweet-blush border-sweet-primaryStrong shadow-sweet"
-                        : "bg-sweet-bg hover:bg-sweet-blush/40 border-sweet-border"
+                        ? "bg-[#FFF0F5] border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8] scale-[1.02]"
+                        : "bg-white/80 hover:bg-white border-white/90"
                     }`}
                   >
                     <div className="h-28 flex items-center justify-center">
@@ -140,14 +140,14 @@ export function TemplateSelector({
                     </div>
                     <div className="w-full">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-heading font-bold text-xs text-sweet-text line-clamp-1">
+                        <span className="font-heading font-extrabold text-xs text-sweet-text line-clamp-1">
                           {tpl.name}
                         </span>
                         {isSelected && (
-                          <CheckIcon className="size-4 text-sweet-primaryStrong shrink-0" />
+                          <CheckIcon className="size-4 text-[#F472B6] shrink-0 stroke-[3]" />
                         )}
                       </div>
-                      <span className="text-[11px] text-sweet-muted block">
+                      <span className="text-[11px] font-heading font-semibold text-sweet-muted block mt-0.5">
                         {tpl.aspect_label || `${tpl.photos_required} Pose`}
                       </span>
                     </div>
@@ -158,10 +158,10 @@ export function TemplateSelector({
           </Card>
 
           {/* 2. Frame Color Swatches (Sweet Pink, Minimal Cream, Lavender Dream, etc.) */}
-          <Card variant="surface" padding="sm" className="space-y-3">
-            <h2 className="font-heading font-bold text-base text-sweet-text flex items-center gap-2">
+          <Card variant="glass" padding="sm" className="space-y-3">
+            <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
               <HeartIcon className="size-4 text-sweet-primaryStrong" />
-              <span>2. Pilih Warna Frame</span>
+              <span>2. Pilih Warna Frame (Color Swatches)</span>
             </h2>
 
             <div
@@ -180,18 +180,18 @@ export function TemplateSelector({
                     onClick={() => setDraftFrameColor(theme.id)}
                     className={`min-h-[48px] px-3.5 py-2 rounded-full border-2 flex items-center gap-2.5 transition-all ${
                       isSelected
-                        ? "bg-sweet-blush border-sweet-primaryStrong shadow-sm scale-[1.02]"
-                        : "bg-sweet-bg hover:bg-sweet-blush/40 border-sweet-border"
+                        ? "bg-white border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8] scale-[1.02]"
+                        : "bg-white/80 hover:bg-white border-white/90"
                     }`}
                   >
                     <span
                       aria-hidden="true"
                       style={{ backgroundColor: theme.hex, color: checkColor }}
-                      className="size-7 rounded-full border border-sweet-text/20 flex items-center justify-center shadow-inner"
+                      className="size-7 rounded-full border border-black/15 flex items-center justify-center shadow-inner"
                     >
-                      {isSelected && <CheckIcon className="size-4" />}
+                      {isSelected && <CheckIcon className="size-4 stroke-[3]" />}
                     </span>
-                    <span className="font-heading font-bold text-xs text-sweet-text">
+                    <span className="font-heading font-extrabold text-xs text-sweet-text">
                       {theme.name}
                     </span>
                   </button>
@@ -201,8 +201,8 @@ export function TemplateSelector({
           </Card>
 
           {/* 3. Filter Tone */}
-          <Card variant="surface" padding="sm" className="space-y-2.5">
-            <h2 className="font-heading font-bold text-base text-sweet-text flex items-center gap-2">
+          <Card variant="glass" padding="sm" className="space-y-2.5">
+            <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
               <SparkleIcon className="size-4 text-sweet-primaryStrong" />
               <span>3. Filter Warna Foto</span>
             </h2>
@@ -219,10 +219,10 @@ export function TemplateSelector({
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setDraftFilter(flt.id)}
-                    className={`min-h-[48px] px-4 py-2 rounded-full border-2 font-heading font-bold text-xs transition-all ${
+                    className={`min-h-[46px] px-4 py-2 rounded-full border-2 font-heading font-extrabold text-xs transition-all ${
                       isSelected
-                        ? "bg-sweet-secondary border-[#9E8CE0] text-sweet-text shadow-sm"
-                        : "bg-sweet-bg hover:bg-sweet-lavenderSoft border-sweet-border text-sweet-text"
+                        ? "bg-[#DCD6F7] border-[#9E8CE0] text-sweet-text shadow-sweet scale-[1.02]"
+                        : "bg-white/80 hover:bg-white border-white/90 text-sweet-text"
                     }`}
                   >
                     {flt.name}
@@ -233,14 +233,17 @@ export function TemplateSelector({
           </Card>
         </div>
 
-        {/* Right: Live Composite Preview & Caption + Confirm CTA */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* Right: Sticky Live Frame Preview & Caption + Confirm CTA */}
+        <div className="lg:col-span-4 sticky top-3 self-start space-y-4 animate-container-right">
           <Card
-            variant="blush"
+            variant="glass"
             padding="md"
-            className="flex flex-col items-center text-center space-y-3"
+            className="flex flex-col items-center text-center space-y-3 shadow-sweet-card"
           >
-            <StatusBadge tone="lavender">Live Frame Preview</StatusBadge>
+            <div className="px-4 py-1.5 rounded-full bg-[#F3E8FF] border border-[#DCD6F7] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
+              ✦ Live Frame Preview ✦
+            </div>
+
             <div className="h-64 flex items-center justify-center py-1">
               {activeTemplate && (
                 <LayoutMock
@@ -249,7 +252,7 @@ export function TemplateSelector({
                   frameThemes={frameThemes}
                   photos={session.photos}
                   captionText={draftCaption}
-                  className="h-60 w-auto"
+                  className="h-60 w-auto shadow-sweet-strip rounded-xl"
                 />
               )}
             </div>
@@ -257,7 +260,7 @@ export function TemplateSelector({
             <div className="w-full text-left">
               <label
                 htmlFor="vibe-caption-input"
-                className="block font-heading font-bold text-xs text-sweet-text mb-1"
+                className="block font-heading font-extrabold text-xs text-sweet-text mb-1"
               >
                 Catatan / Nama di Frame:
               </label>
@@ -268,13 +271,13 @@ export function TemplateSelector({
                 value={draftCaption}
                 onChange={(e) => setDraftCaption(e.target.value)}
                 placeholder="SWEET STUDIO ♡"
-                className="w-full min-h-[46px] px-3.5 py-2 rounded-2xl bg-white border-2 border-sweet-border text-sweet-text text-sm font-medium"
+                className="w-full min-h-[46px] px-4 py-2 rounded-2xl bg-white/90 border-2 border-white text-sweet-text text-sm font-heading font-semibold focus:border-[#F472B6] outline-none shadow-xs transition-colors"
               />
             </div>
           </Card>
 
           <Button
-            variant="primary"
+            variant="strong"
             size="xl"
             loading={isBusy}
             onClick={() =>
@@ -285,8 +288,8 @@ export function TemplateSelector({
                 customText: draftCaption.trim() || undefined,
               })
             }
-            rightIcon={<HeartIcon className="size-6 text-sweet-primaryStrong" />}
-            className="w-full min-h-[68px] text-xl shadow-sweetLg border-sweet-primaryStrong"
+            rightIcon={<HeartIcon className="size-6 text-white" />}
+            className="w-full min-h-[68px] text-xl font-extrabold shadow-sweetLg animate-pulse-cta"
           >
             CHOOSE THIS FRAME
           </Button>

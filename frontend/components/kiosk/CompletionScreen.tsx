@@ -42,79 +42,105 @@ export function CompletionScreen({
     window.open(finalImageUrl, "_blank", "noopener,noreferrer");
   };
 
+  // Pastel confetti particles
+  const confettiColors = ["#FBCFE8", "#F472B6", "#DCD6F7", "#DEF1FF", "#E0F5E9", "#FCF9F2"];
+
   return (
     <section
       aria-labelledby="completion-heading"
-      className="flex-1 min-h-0 flex flex-col items-center justify-center px-6 py-6 text-center overflow-y-auto kiosk-scroll animate-screen-fade"
+      className="flex-1 min-h-0 flex flex-col items-center justify-between px-6 py-6 text-center overflow-y-auto kiosk-scroll relative"
     >
-      <Card
-        variant="surface"
-        padding="lg"
-        className="max-w-xl w-full flex flex-col items-center space-y-5"
-      >
-        <div className="size-20 rounded-full bg-sweet-primary/80 border-4 border-sweet-primaryStrong/40 flex items-center justify-center text-sweet-primaryStrong shadow-sweet animate-float-soft">
-          <HeartIcon className="size-10" />
+      {/* Subtle Pastel Falling Confetti Background */}
+      <div aria-hidden="true" className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {Array.from({ length: 24 }).map((_, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full animate-float-soft"
+            style={{
+              top: `${(i * 19) % 95}%`,
+              left: `${(i * 13) % 96}%`,
+              width: `${(i % 3) * 3 + 8}px`,
+              height: `${(i % 3) * 3 + 8}px`,
+              backgroundColor: confettiColors[i % confettiColors.length],
+              opacity: 0.7,
+              animationDuration: `${3.5 + (i % 5) * 0.8}s`,
+              animationDelay: `${(i % 7) * 0.4}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 2-Column Side-by-Side Container */}
+      <div className="max-w-6xl w-full my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 px-4 sm:px-6">
+        {/* Kolom Kiri: Final Photo Strip Centerpiece Preview (~74dvh) */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center animate-container-left">
+          {finalImageUrl && (
+            <div className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white/85 backdrop-blur-md border-2 border-white/90 shadow-sweet-strip animate-float-strip-2 transition-all duration-300">
+              <img
+                src={finalImageUrl}
+                alt="Hasil akhir cetakan foto Sweet Studio"
+                className="max-h-[74dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
+              />
+              <div className="absolute -top-3 -right-3 size-11 rounded-full bg-gradient-to-tr from-[#FBCFE8] via-[#F472B6] to-[#EC4899] flex items-center justify-center text-white shadow-sweet animate-bounce">
+                <HeartIcon className="size-6 fill-white" />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-1.5">
-          <h1
-            id="completion-heading"
-            className="font-heading font-extrabold text-3xl md:text-4xl text-sweet-text"
+        {/* Kolom Kanan: Glassmorphic Card "THANK YOU!" */}
+        <div className="lg:col-span-7 flex flex-col justify-center animate-container-right">
+          <Card
+            variant="glass"
+            padding="lg"
+            className="w-full flex flex-col items-center text-center space-y-6 shadow-sweet-card"
           >
-            THANK YOU!
-          </h1>
-          <p className="text-base md:text-lg text-sweet-muted font-medium">
-            Hope you love your photos! • Jangan lupa ambil hasil cetakanmu ya ♡
-          </p>
-        </div>
-
-        {finalImageUrl && (
-          <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-3xl bg-sweet-bg border-2 border-sweet-border w-full justify-center">
-            <img
-              src={finalImageUrl}
-              alt="Hasil akhir foto sesi Anda"
-              className="h-40 w-auto object-contain rounded-xl border border-sweet-border shadow-sm"
-            />
-            <div className="text-left space-y-2.5 max-w-xs">
-              <StatusBadge
-                tone="pink"
-                icon={<SparkleIcon className="size-3.5 text-sweet-primaryStrong" />}
+            <div className="space-y-2">
+              <div className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full bg-white/80 border border-white/90 shadow-xs text-xs font-heading font-extrabold text-[#F472B6]">
+                <SparkleIcon className="size-4" />
+                <span>MEMORIES CAPTURED</span>
+                <SparkleIcon className="size-4" />
+              </div>
+              <h1
+                id="completion-heading"
+                className="font-heading font-extrabold text-3xl sm:text-5xl text-[#3F3D56] tracking-wide"
               >
-                Simpan Versi Digital
-              </StatusBadge>
-              <p className="text-xs text-sweet-muted">
-                Ingin menyimpan foto ini di ponselmu? Pindai kode QR sebelum
-                layar kembali ke menu utama.
+                THANK YOU! ♡
+              </h1>
+              <p className="text-sm sm:text-base text-sweet-muted font-heading font-semibold max-w-md mx-auto">
+                Hope you love your memories! Jangan lupa ambil hasil cetakanmu di tray printer ya ✨
               </p>
+            </div>
+
+            <div className="w-full flex flex-col sm:flex-row items-center gap-3.5 pt-2">
               <Button
-                variant="secondary"
-                size="md"
-                leftIcon={<QrIcon className="size-4" />}
+                variant="strong"
+                size="lg"
+                leftIcon={<QrIcon className="size-6 text-white" />}
                 onClick={() => setQrOpen(true)}
+                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold shadow-sweet-strip rounded-full active:scale-95 transition-all duration-300"
               >
                 Tampilkan Kode QR
               </Button>
+
+              <Button
+                variant="surface"
+                size="lg"
+                onClick={onStartAgain}
+                rightIcon={<FlowerIcon className="size-6 text-[#F472B6]" />}
+                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold rounded-full border-2 border-white/80 active:scale-95 transition-all duration-300"
+              >
+                START AGAIN
+              </Button>
             </div>
-          </div>
-        )}
 
-        <div className="w-full space-y-3 pt-1">
-          <Button
-            variant="primary"
-            size="xl"
-            onClick={onStartAgain}
-            rightIcon={<FlowerIcon className="size-6 text-sweet-primaryStrong" />}
-            className="w-full min-h-[68px] text-xl shadow-sweetLg border-sweet-primaryStrong"
-          >
-            START AGAIN
-          </Button>
-
-          <p className="text-xs font-heading font-bold text-sweet-muted flex items-center justify-center gap-1.5">
-            <span>See you next time ✿</span>
-            <span>• Kembali ke halaman awal dalam {secondsLeft} detik</span>
-          </p>
+            <p className="text-xs sm:text-sm font-heading font-bold text-sweet-muted flex items-center justify-center gap-1.5 pt-1">
+              <span>See you next time ✿</span>
+              <span>• Kembali otomatis dalam <strong className="text-[#F472B6]">{secondsLeft}s</strong></span>
+            </p>
+          </Card>
         </div>
-      </Card>
+      </div>
 
       {completedSession && (
         <QrDialog

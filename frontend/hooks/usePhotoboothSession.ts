@@ -249,14 +249,7 @@ export function usePhotoboothSession() {
           // User proceeded or 5s timed out
           if (currentPose >= totalPhotos) {
             setImageVersion((v) => v + 1);
-            const cfg = loadOperatorConfig();
-            if (cfg.enablePhotoSelectionStep) {
-              setKioskStep("PHOTO_SELECTION");
-            } else if (cfg.enableTemplateSelectionStep) {
-              setKioskStep("TEMPLATE_SELECTION");
-            } else {
-              setKioskStep("PREVIEW");
-            }
+            setKioskStep("PHOTO_SELECTION");
             return;
           }
 
@@ -397,7 +390,7 @@ export function usePhotoboothSession() {
       try {
         const started = await photoboothApi.startSession({
           customer_name: customerName || undefined,
-          photos_required: selectedTemplate.photos_required,
+          photos_required: 6, // Always capture 6 poses per session
           template_id: selectedTemplate.id,
           frame_color: selectedFrameColor,
         });
@@ -421,13 +414,38 @@ export function usePhotoboothSession() {
     await runAutomatedCaptureSequence(session);
   }, [session, runAutomatedCaptureSequence]);
 
-  const completePhotoSelectionStep = useCallback(() => {
-    const cfg = loadOperatorConfig();
-    if (cfg.enableTemplateSelectionStep) {
-      setKioskStep("TEMPLATE_SELECTION");
-    } else {
-      setKioskStep("PREVIEW");
-    }
+  const completePhotoSelectionStep = useCallback(
+    async (selectedPhotoIds: string[]) => {
+      if (!session) return;
+      setIsBusy(true);
+      setErrorBanner(null);
+      try {
+        const updated = await photoboothApi.processSession({
+          session_id: session.session_id,
+          template_id: selectedTemplate.id,
+          frame_color: selectedFrameColor,
+          filter_name: session.filter_name || "original",
+          custom_text: session.customer_name || undefined,
+          selected_photo_ids: selectedPhotoIds,
+        });
+        setSession(updated);
+        setState(updated.status);
+        setImageVersion((v) => v + 1);
+        setKioskStep("PREVIEW");
+        setPoliteMessage("Foto pilihanmu berhasil dipasang ke frame!");
+      } catch (err: any) {
+        const msg = err?.message || "Gagal menerapkan foto pilihan ke frame.";
+        setErrorBanner(msg);
+        setAssertiveMessage(msg);
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [session, selectedTemplate.id, selectedFrameColor]
+  );
+
+  const backToPhotoSelection = useCallback(() => {
+    setKioskStep("PHOTO_SELECTION");
   }, []);
 
   const customizePreview = useCallback(
@@ -436,18 +454,29 @@ export function usePhotoboothSession() {
       frameColor?: string;
       templateId?: string;
       customText?: string;
+      selectedPhotoIds?: string[];
     }) => {
       if (!session) return;
       customizingRef.current = true;
       setIsBusy(true);
       setErrorBanner(null);
       try {
+        if (opts.templateId && opts.templateId !== selectedTemplate.id) {
+          const match = templates.find((t) => t.id === opts.templateId);
+          if (match) setSelectedTemplate(match);
+        }
+        if (opts.frameColor && opts.frameColor !== selectedFrameColor) {
+          setSelectedFrameColor(opts.frameColor);
+        }
+
         const updated = await photoboothApi.processSession({
           session_id: session.session_id,
           filter_name: opts.filterName ?? session.filter_name ?? "original",
           frame_color: opts.frameColor ?? session.frame_color ?? "pink",
           template_id: opts.templateId ?? session.template_id ?? undefined,
           custom_text: opts.customText,
+          selected_photo_ids:
+            opts.selectedPhotoIds ?? session.selected_photo_ids ?? undefined,
         });
         setSession(updated);
         setState(updated.status);
@@ -463,7 +492,7 @@ export function usePhotoboothSession() {
         setIsBusy(false);
       }
     },
-    [session]
+    [session, selectedTemplate.id, selectedFrameColor, templates]
   );
 
   const printAndFinish = useCallback(
@@ -621,6 +650,7 @@ export function usePhotoboothSession() {
     retakeCurrentPhoto,
     retryFailedCapture,
     completePhotoSelectionStep,
+    backToPhotoSelection,
     customizePreview,
     printAndFinish,
     finishWithoutPrint,

@@ -64,58 +64,41 @@ export function TopBar({
   const printerOffline = printerStatus !== null && !printerStatus.ready;
 
   return (
-    <header className="w-full px-6 py-3.5 flex items-center justify-between gap-4 border-b border-sweet-border/80 bg-sweet-surface/80 backdrop-blur-md z-20 shrink-0">
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerUp={clearPress}
-        onPointerLeave={clearPress}
-        onPointerCancel={clearPress}
-        title="Tahan 1.5 detik untuk membuka Diagnostik Operator"
-        className="flex items-center gap-3 cursor-default select-none"
-      >
-        <div className="size-11 rounded-2xl bg-sweet-primary/80 border-2 border-sweet-primaryStrong/40 flex items-center justify-center text-sweet-text shadow-sm">
-          <BowIcon className="size-6 text-sweet-primaryStrong" />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <SparkleIcon className="size-3.5 text-sweet-primaryStrong" />
-            <span className="font-heading font-extrabold text-lg tracking-wider text-sweet-text">
-              SWEET STUDIO
-            </span>
-            <SparkleIcon className="size-3.5 text-sweet-primaryStrong" />
-          </div>
-          <p className="text-xs text-sweet-muted font-medium">
-            a little moment, a lovely memory ♡
-          </p>
-        </div>
-      </div>
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerUp={clearPress}
+      onPointerLeave={clearPress}
+      onPointerCancel={clearPress}
+      title="Tahan 1.5 detik untuk membuka Diagnostik Operator"
+      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white/90 shadow-sweet text-xs font-heading font-extrabold text-[#3F3D56] cursor-default select-none transition-all hover:bg-white active:scale-95 animate-container-card"
+    >
+      <span className="size-2 rounded-full bg-[#F472B6] animate-ping" />
+      <span className="flex items-center gap-1.5">
+        <HeartIcon className="size-3 text-[#F472B6]" />
+        <span>{STEP_LABELS[kioskStep]}</span>
+      </span>
 
-      <div className="flex items-center gap-2.5 flex-wrap justify-end">
-        {cameraOffline && (
-          <StatusBadge tone="error">Kamera Belum Siap</StatusBadge>
-        )}
-        {printerOffline && (
-          <StatusBadge tone="error">Printer Offline</StatusBadge>
-        )}
+      {cameraOffline && (
+        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] shadow-xs">
+          Kamera Offline
+        </span>
+      )}
+      {printerOffline && (
+        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] shadow-xs">
+          Printer Offline
+        </span>
+      )}
 
-        <StatusBadge
-          tone="lavender"
-          icon={<HeartIcon className="size-3.5 text-sweet-primaryStrong" />}
+      {showOperatorBtn && (
+        <button
+          type="button"
+          onClick={onOpenOperator}
+          className="ml-1 px-2.5 py-1 rounded-full bg-sweet-surface hover:bg-sweet-blush border border-sweet-border text-[11px] font-heading font-bold text-sweet-text inline-flex items-center gap-1"
         >
-          {STEP_LABELS[kioskStep]}
-        </StatusBadge>
-
-        {showOperatorBtn && (
-          <button
-            type="button"
-            onClick={onOpenOperator}
-            className="min-h-[44px] px-4 py-2 rounded-full bg-sweet-surface hover:bg-sweet-blush border border-sweet-border text-xs font-heading font-bold text-sweet-text inline-flex items-center gap-1.5"
-          >
-            <SettingsIcon className="size-4" />
-            <span>Panel Operator</span>
-          </button>
-        )}
-      </div>
-    </header>
+          <SettingsIcon className="size-3" />
+          <span>Operator</span>
+        </button>
+      )}
+    </div>
   );
 }

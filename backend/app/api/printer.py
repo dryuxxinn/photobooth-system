@@ -88,6 +88,7 @@ def process_session_image(payload: ProcessImageRequest = ProcessImageRequest()):
             filter_name=payload.filter_name,
             frame_color=payload.frame_color,
             custom_text=payload.custom_text,
+            selected_photo_ids=payload.selected_photo_ids,
         )
         return SessionDetailResponse(**manager.get_current_session())
     except SessionTransitionError as e:

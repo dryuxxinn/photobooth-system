@@ -1,15 +1,16 @@
 import React from "react";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "surface" | "cream" | "blush" | "lavender";
+  variant?: "glass" | "surface" | "cream" | "blush" | "lavender";
   padding?: "none" | "sm" | "md" | "lg";
 }
 
 const VARIANT_MAP: Record<NonNullable<CardProps["variant"]>, string> = {
-  surface: "bg-sweet-surface border-sweet-border",
-  cream: "bg-sweet-bg border-sweet-border",
-  blush: "bg-sweet-blush border-sweet-primary/60",
-  lavender: "bg-sweet-lavenderSoft border-sweet-secondary",
+  glass: "bg-white/70 backdrop-blur-md border border-white/80 shadow-sweetLg",
+  surface: "bg-white/85 backdrop-blur-sm border border-sweet-border shadow-sweet",
+  cream: "bg-[#FFF9F2]/90 border border-sweet-border shadow-sweet",
+  blush: "bg-[#FFF0F5]/90 border-2 border-[#FBCFE8] shadow-sweet",
+  lavender: "bg-[#F3E8FF]/90 border-2 border-[#DCD6F7] shadow-sweet",
 };
 
 const PADDING_MAP: Record<NonNullable<CardProps["padding"]>, string> = {
@@ -20,7 +21,7 @@ const PADDING_MAP: Record<NonNullable<CardProps["padding"]>, string> = {
 };
 
 export function Card({
-  variant = "surface",
+  variant = "glass",
   padding = "md",
   className = "",
   children,
@@ -28,7 +29,7 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-3xl border-2 shadow-sweet ${VARIANT_MAP[variant]} ${PADDING_MAP[padding]} ${className}`}
+      className={`rounded-[2rem] ${VARIANT_MAP[variant]} ${PADDING_MAP[padding]} ${className}`}
       {...rest}
     >
       {children}

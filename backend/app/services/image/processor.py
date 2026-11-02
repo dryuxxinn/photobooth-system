@@ -234,6 +234,14 @@ class ImageProcessor:
         key = (frame_color or "cream").lower()
         return cls.FRAME_THEMES.get(key, cls.FRAME_THEMES["cream"])
 
+    @classmethod
+    def get_template(cls, template_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        target = template_id or "classic_strip_3"
+        for tpl in cls.AVAILABLE_TEMPLATES:
+            if tpl["id"] == target:
+                return tpl
+        return None
+
     @staticmethod
     def apply_filter(img: Image.Image, filter_name: str = "original") -> Image.Image:
         """Apply optional color filter preset to a PIL image."""

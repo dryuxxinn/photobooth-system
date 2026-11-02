@@ -132,6 +132,7 @@ export const photoboothApi = {
     template_id?: string;
     frame_color?: string;
     custom_text?: string;
+    selected_photo_ids?: string[];
   }) =>
     request<SessionDetail>("/image/process", {
       method: "POST",

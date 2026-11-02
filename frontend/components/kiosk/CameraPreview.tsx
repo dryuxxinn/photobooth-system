@@ -29,6 +29,8 @@ interface CameraPreviewProps {
   attachVideoRef?: (node: HTMLVideoElement | null) => void;
   onRetryWebcam?: () => void;
   children?: React.ReactNode;
+  className?: string;
+  containerClassName?: string;
 }
 
 export function CameraPreview({
@@ -48,6 +50,8 @@ export function CameraPreview({
   attachVideoRef,
   onRetryWebcam,
   children,
+  className = "",
+  containerClassName = "",
 }: CameraPreviewProps) {
   const serverCameraReady = cameraStatus?.connected ?? true;
   const isUsingWebcam = cameraSource === "webcam";
@@ -56,36 +60,34 @@ export function CameraPreview({
     : "";
 
   return (
-    <div className="w-full max-w-xl md:max-w-2xl flex flex-col gap-2">
+    <div className={`w-full flex flex-col items-center justify-center gap-2 ${className || "max-w-xl md:max-w-2xl"}`}>
       {/* Main 3:2 Camera Viewport */}
-      <div className="relative w-full aspect-[3/2] rounded-[2rem] bg-sweet-surface border-4 border-sweet-primary shadow-sweetLg overflow-hidden flex flex-col items-center justify-center">
+      <div className={`relative w-full max-w-[calc(76dvh*1.5)] aspect-[3/2] max-h-[76dvh] rounded-[2.5rem] bg-sweet-surface border-4 border-white/90 shadow-sweetLg overflow-hidden flex flex-col items-center justify-center ${containerClassName}`}>
         {/* Top Status Overlay inside Camera Frame */}
         <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
           {isUsingWebcam ? (
-            <StatusBadge tone={streamReady ? "success" : "warning"}>
-              {streamReady
-                ? `Live: ${deviceLabel.slice(0, 28)}`
-                : "Menyiapkan Kamera Perangkat (Fallback Server Aktif)"}
-            </StatusBadge>
+            <div className="px-3.5 py-1.5 rounded-full bg-emerald-500/90 text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm">
+              <span className="size-2 rounded-full bg-white animate-ping" />
+              <span>{streamReady ? "Live Webcam" : "Menyiapkan Kamera..."}</span>
+            </div>
           ) : (
-            <StatusBadge tone={serverCameraReady ? "success" : "error"}>
-              {serverCameraReady
-                ? `Kamera Server (${cameraStatus?.model || "Canon / Simulasi"})`
-                : "Kamera Server Tidak Terhubung"}
-            </StatusBadge>
+            <div className={`px-3.5 py-1.5 rounded-full ${serverCameraReady ? "bg-emerald-500/90" : "bg-rose-500/90"} text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm`}>
+              <span className="size-2 rounded-full bg-white animate-ping" />
+              <span>{serverCameraReady ? `Kamera: ${cameraStatus?.model || "Canon DSLR"}` : "Kamera Terputus"}</span>
+            </div>
           )}
 
-          <StatusBadge
-            tone="pink"
-            icon={<CameraIcon className="size-3.5 text-sweet-primaryStrong" />}
-          >
-            {mode === "preparation"
-              ? `${photosRequired} Pose Otomatis`
-              : `Foto ${Math.min(photosTaken + 1, photosRequired)} dari ${photosRequired}`}
-          </StatusBadge>
+          <div className="px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-white/90 text-xs font-heading font-extrabold text-[#3F3D56] flex items-center gap-1.5 shadow-sm">
+            <CameraIcon className="size-3.5 text-[#F472B6]" />
+            <span>
+              {mode === "preparation"
+                ? `${photosRequired} Pose Frame`
+                : `Foto ${Math.min(photosTaken + 1, photosRequired)} dari ${photosRequired}`}
+            </span>
+          </div>
         </div>
 
-        {/* Live Browser Webcam / iPad Camera Video Element (kept mounted when in webcam mode) */}
+        {/* Live Browser Webcam / iPad Camera Video Element */}
         {isUsingWebcam && (
           <video
             ref={attachVideoRef}
@@ -98,15 +100,17 @@ export function CameraPreview({
           />
         )}
 
-        {/* Subtle framing guide overlay when live webcam stream is active */}
-        {isUsingWebcam && streamReady && (
+        {/* Face Position Guide Overlay (Oval dashed line) - Only in preparation mode */}
+        {isUsingWebcam && streamReady && mode === "preparation" && (
           <div
             aria-hidden="true"
-            className="absolute inset-6 rounded-3xl border-2 border-dashed border-white/45 pointer-events-none flex items-end justify-center pb-3"
+            className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10"
           >
-            <span className="px-3.5 py-1 rounded-full bg-sweet-text/55 text-white text-xs font-heading font-bold backdrop-blur-xs">
-              ✦ Posisikan wajah di dalam garis bantu ✦
-            </span>
+            <div className="w-48 sm:w-56 h-60 sm:h-72 rounded-[50%] border-2 border-dashed border-white/70 flex items-end justify-center pb-3 shadow-xs">
+              <span className="px-3.5 py-1 rounded-full bg-[#3F3D56]/60 text-white text-[11px] font-heading font-bold backdrop-blur-xs">
+                ✦ Posisikan wajah di dalam garis bantu ✦
+              </span>
+            </div>
           </div>
         )}
 
@@ -200,7 +204,7 @@ export function CameraPreview({
 
       {/* Camera Source Switcher Bar (Webcam/iPad vs Server Camera + Front/Rear Flip) */}
       {mode === "preparation" && onChangeCameraSource && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-sweet-surface border border-sweet-border shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-sweet-surface border border-sweet-border shadow-xs w-full max-w-[calc(76dvh*1.5)] mx-auto">
           <div className="flex items-center gap-1.5">
             <span className="font-heading font-bold text-xs text-sweet-muted mr-1">
               Sumber Kamera:

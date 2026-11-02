@@ -114,7 +114,7 @@ class SessionManager:
     def start_session(
         self,
         customer_name: Optional[str] = None,
-        photos_required: int = 3,
+        photos_required: int = 6,
         template_id: str = "classic_strip_3",
         frame_color: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -142,6 +142,7 @@ class SessionManager:
             "photos_required": photos_required,
             "photos_taken": 0,
             "photos": [],
+            "selected_photo_ids": [],
             "template_id": template_id,
             "filter_name": "original",
             "frame_color": frame_color,
@@ -322,6 +323,7 @@ class SessionManager:
         filter_name: Optional[str] = None,
         frame_color: Optional[str] = None,
         custom_text: Optional[str] = None,
+        selected_photo_ids: Optional[List[str]] = None,
     ) -> str:
         session = self.current_session
         if not session:
@@ -335,10 +337,22 @@ class SessionManager:
             session["frame_color"] = frame_color
         if custom_text is not None:
             session["customer_name"] = custom_text
+        if selected_photo_ids is not None:
+            session["selected_photo_ids"] = selected_photo_ids
 
         self._transition_to(SessionState.PROCESSING)
 
-        photo_paths = [Path(p["original_path"]) for p in session["photos"]]
+        photos_by_id = {p["id"]: Path(p["original_path"]) for p in session["photos"]}
+        active_selected = session.get("selected_photo_ids") or []
+        if active_selected:
+            photo_paths = [photos_by_id[pid] for pid in active_selected if pid in photos_by_id]
+        else:
+            photo_paths = [Path(p["original_path"]) for p in session["photos"]]
+
+        active_tpl = ImageProcessor.get_template(session.get("template_id"))
+        if active_tpl and "photos_required" in active_tpl:
+            photo_paths = photo_paths[: active_tpl["photos_required"]]
+
         output_filename = f"processed_{session['session_id']}.jpg"
         output_path = settings.PROCESSED_DIR / output_filename
 
