@@ -30,6 +30,15 @@ export const DEFAULT_OPERATOR_CONFIG: BoothOperatorConfig = {
     "single_frame_1",
     "wide_recap_1",
   ],
+  requirePayment: false,
+  sessionPriceIdr: 35000,
+  voucherCodes: ["SWEET2026", "VIPFREE", "BESTIE"],
+  enableSoundEffects: true,
+  publicShareBaseUrl: "",
+  cameraSourceMode: "webcam",
+  preferredDeviceId: null,
+  isMirrored: true,
+  defaultFilter: "original",
 };
 
 export function loadOperatorConfig(): BoothOperatorConfig {

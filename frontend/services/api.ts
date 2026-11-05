@@ -7,6 +7,7 @@ import {
   PrintJobRecord,
   SessionDetail,
   SessionState,
+  StickerOption,
   TemplateOption,
 } from "@/types/photobooth";
 
@@ -88,9 +89,11 @@ export const photoboothApi = {
   getCameraStatus: () => request<CameraStatus>("/camera/status"),
   getPrinterStatus: () => request<PrinterStatus>("/printer/status"),
   getTemplatesData: () =>
-    request<{ templates: TemplateOption[]; frame_themes?: FrameThemeOption[] }>(
-      "/templates"
-    ),
+    request<{
+      templates: TemplateOption[];
+      frame_themes?: FrameThemeOption[];
+      sticker_options?: StickerOption[];
+    }>("/templates"),
 
   getCurrentSession: () =>
     request<{
@@ -98,6 +101,9 @@ export const photoboothApi = {
       state: SessionState;
       session: SessionDetail | null;
     }>("/session/current"),
+
+  getSessionById: (sessionId: string) =>
+    request<SessionDetail>(`/session/${encodeURIComponent(sessionId)}`),
 
   getSessionHistory: (limit: number = 25) =>
     request<{ sessions: SessionDetail[] }>(`/session/history?limit=${limit}`),
@@ -109,6 +115,7 @@ export const photoboothApi = {
     photos_required: number;
     template_id: string;
     frame_color?: string;
+    filter_name?: string;
   }) =>
     request<SessionDetail>("/session/start", {
       method: "POST",
@@ -131,12 +138,77 @@ export const photoboothApi = {
     filter_name?: string;
     template_id?: string;
     frame_color?: string;
+    sticker_id?: string;
     custom_text?: string;
     selected_photo_ids?: string[];
   }) =>
     request<SessionDetail>("/image/process", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  uploadTemplateOverlay: (templateId: string, imageData: string) =>
+    request<{
+      success: boolean;
+      template_id: string;
+      overlay_url: string;
+      message: string;
+    }>(`/templates/${encodeURIComponent(templateId)}/overlay`, {
+      method: "POST",
+      body: JSON.stringify({ image_data: imageData }),
+    }),
+
+  deleteTemplateOverlay: (templateId: string) =>
+    request<{
+      success: boolean;
+      template_id: string;
+      removed: boolean;
+      message: string;
+    }>(`/templates/${encodeURIComponent(templateId)}/overlay`, {
+      method: "DELETE",
+    }),
+
+  createQrisPayment: (amount: number = 35000, packageName?: string) =>
+    request<{
+      transaction_id: string;
+      amount: number;
+      package_name: string;
+      qr_string: string;
+      status: "PENDING" | "PAID";
+      created_at: string;
+      paid_at?: string | null;
+    }>("/session/payment/qris", {
+      method: "POST",
+      body: JSON.stringify({ amount, package_name: packageName }),
+    }),
+
+  confirmQrisPayment: (transactionId: string) =>
+    request<{
+      transaction_id: string;
+      amount: number;
+      status: "PENDING" | "PAID";
+      paid_at?: string | null;
+    }>(`/session/payment/qris/${encodeURIComponent(transactionId)}/confirm`, {
+      method: "POST",
+    }),
+
+  verifyVoucherCode: (code: string, validCodes?: string[]) =>
+    request<{ valid: boolean; code: string; message: string }>(
+      "/session/payment/voucher",
+      {
+        method: "POST",
+        body: JSON.stringify({ code, valid_codes: validCodes }),
+      }
+    ),
+
+  syncCloudShareLink: (sessionId: string, publicBaseUrl?: string) =>
+    request<{
+      success: boolean;
+      session_id: string;
+      cloud_share_url: string;
+    }>(`/session/${encodeURIComponent(sessionId)}/cloud-sync`, {
+      method: "POST",
+      body: JSON.stringify({ public_base_url: publicBaseUrl }),
     }),
 
   printSession: (sessionId: string, copies: number = 1) =>
@@ -173,4 +245,16 @@ export const photoboothApi = {
       file_path: string;
       timestamp: string;
     }>("/camera/capture", { method: "POST" }),
+
+  configureCamera: (payload: {
+    driver: "simulation" | "gphoto" | "wifi";
+    model?: string;
+    wifi_ip?: string;
+    wifi_port?: number;
+    wifi_protocol?: "sony_http" | "ptpip";
+  }) =>
+    request<CameraStatus>("/camera/config", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };

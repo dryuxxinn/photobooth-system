@@ -302,6 +302,7 @@ export function Dashboard() {
               frameThemes={frameThemes}
               config={operatorConfig}
               onUpdateConfig={handleUpdateConfig}
+              onRefreshTemplates={refreshAll}
             />
           )}
 
@@ -319,6 +320,7 @@ export function Dashboard() {
               frameThemes={frameThemes}
               config={operatorConfig}
               onUpdateConfig={handleUpdateConfig}
+              onRefreshTemplates={refreshAll}
             />
           )}
         </main>

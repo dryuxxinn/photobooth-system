@@ -106,3 +106,32 @@ def test_compose_photostrip_empty_raises(tmp_path):
     out = tmp_path / "empty.jpg"
     with pytest.raises(ValueError, match="No photo paths provided"):
         ImageProcessor.compose_photostrip([], out)
+
+
+def test_compose_gif_and_new_filters(tmp_path):
+    photos = []
+    for i in range(3):
+        p = tmp_path / f"gif_pose_{i}.jpg"
+        img = Image.new("RGB", (900, 600), color=(60 * (i + 1), 110, 160))
+        img.save(p, "JPEG")
+        photos.append(p)
+
+    gif_out = tmp_path / "boomerang.gif"
+    res = ImageProcessor.compose_gif(
+        photos,
+        gif_out,
+        filter_name="beauty",
+        frame_color="pink",
+        customer_name="Sweet Besties",
+        sticker_id="sparkles_only",
+        boomerang=True,
+    )
+    assert res.exists()
+    with Image.open(gif_out) as gif_img:
+        assert gif_img.format == "GIF"
+        assert getattr(gif_img, "is_animated", True) is True
+
+    # Test cool and y2k filters
+    for flt in ("cool", "y2k", "beauty"):
+        filtered = ImageProcessor.apply_filter(Image.new("RGB", (200, 150), (120, 90, 140)), flt)
+        assert filtered.size == (200, 150)

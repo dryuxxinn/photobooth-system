@@ -26,6 +26,7 @@ export function CompletionScreen({
   onStartAgain,
 }: CompletionScreenProps) {
   const [qrOpen, setQrOpen] = useState(false);
+  const [mediaView, setMediaView] = useState<"strip" | "gif">("strip");
 
   const { secondsLeft } = useIdleCountdown({
     enabled: !qrOpen,
@@ -36,10 +37,13 @@ export function CompletionScreen({
   const finalImageUrl = resolveStorageUrl(
     completedSession?.processed_image_url
   );
+  const gifImageUrl = resolveStorageUrl(completedSession?.gif_url);
 
   const handleDownload = async () => {
-    if (!finalImageUrl) return;
-    window.open(finalImageUrl, "_blank", "noopener,noreferrer");
+    const targetUrl =
+      mediaView === "gif" && gifImageUrl ? gifImageUrl : finalImageUrl;
+    if (!targetUrl) return;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
   // Pastel confetti particles
@@ -72,14 +76,55 @@ export function CompletionScreen({
 
       {/* 2-Column Side-by-Side Container */}
       <div className="max-w-6xl w-full my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 px-4 sm:px-6">
-        {/* Kolom Kiri: Final Photo Strip Centerpiece Preview (~74dvh) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center animate-container-left">
-          {finalImageUrl && (
+        {/* Kolom Kiri: Final Photo Strip & Boomerang GIF Centerpiece Preview (~74dvh) */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-3 animate-container-left">
+          {gifImageUrl && (
+            <div
+              role="group"
+              aria-label="Pilih tampilan hasil foto atau Boomerang GIF"
+              className="inline-flex items-center p-1 rounded-full bg-white/85 border border-white/90 shadow-xs gap-1"
+            >
+              <button
+                type="button"
+                aria-pressed={mediaView === "strip"}
+                onClick={() => setMediaView("strip")}
+                className={`min-h-[36px] px-4 rounded-full font-heading font-extrabold text-xs transition-all ${
+                  mediaView === "strip"
+                    ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                Strip Foto ♡
+              </button>
+              <button
+                type="button"
+                aria-pressed={mediaView === "gif"}
+                onClick={() => setMediaView("gif")}
+                className={`min-h-[36px] px-4 rounded-full font-heading font-extrabold text-xs transition-all ${
+                  mediaView === "gif"
+                    ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                Boomerang GIF ✨
+              </button>
+            </div>
+          )}
+
+          {(finalImageUrl || gifImageUrl) && (
             <div className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white/85 backdrop-blur-md border-2 border-white/90 shadow-sweet-strip animate-float-strip-2 transition-all duration-300">
               <img
-                src={finalImageUrl}
-                alt="Hasil akhir cetakan foto Sweet Studio"
-                className="max-h-[74dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
+                src={
+                  mediaView === "gif" && gifImageUrl
+                    ? gifImageUrl
+                    : finalImageUrl
+                }
+                alt={
+                  mediaView === "gif"
+                    ? "Hasil animasi Boomerang GIF Sweet Studio"
+                    : "Hasil akhir cetakan foto Sweet Studio"
+                }
+                className="max-h-[68dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
               />
               <div className="absolute -top-3 -right-3 size-11 rounded-full bg-gradient-to-tr from-[#FBCFE8] via-[#F472B6] to-[#EC4899] flex items-center justify-center text-white shadow-sweet animate-bounce">
                 <HeartIcon className="size-6 fill-white" />
@@ -147,6 +192,7 @@ export function CompletionScreen({
           isOpen={qrOpen}
           onClose={() => setQrOpen(false)}
           imageUrl={finalImageUrl}
+          gifUrl={gifImageUrl}
           sessionId={completedSession.session_id}
           onDownloadOrShare={handleDownload}
         />

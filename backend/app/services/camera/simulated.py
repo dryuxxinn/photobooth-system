@@ -1,3 +1,5 @@
+import io
+import math
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -123,3 +125,59 @@ class SimulatedCamera(CameraInterface):
             "timestamp": timestamp_str,
             "capture_number": self._capture_count
         }
+
+    def capture_preview_bytes(self) -> bytes:
+        """
+        Generate a lightweight live-view JPEG preview frame (900x600) with gentle animated
+        floating studio indicator for live DSLR preview simulation.
+        """
+        width, height = 900, 600
+        t = time.time()
+        bob_y = int(math.sin(t * 3.0) * 10)
+        bob_x = int(math.cos(t * 2.0) * 8)
+
+        image = Image.new("RGB", (width, height), color=(253, 238, 244))
+        draw = ImageDraw.Draw(image)
+
+        accent_color = (233, 130, 145)
+        ink_color = (73, 59, 59)
+
+        draw.rectangle(
+            [20, 20, width - 20, height - 20],
+            outline=accent_color,
+            width=4,
+        )
+
+        cx, cy = width // 2 + bob_x, height // 2 + bob_y
+        draw.ellipse(
+            [cx - 160, cy - 175, cx + 160, cy + 145],
+            fill=(255, 255, 255),
+            outline=accent_color,
+            width=4,
+        )
+        draw.ellipse(
+            [cx - 58, cy - 110, cx + 58, cy - 5],
+            fill=accent_color,
+        )
+        draw.pieslice(
+            [cx - 115, cy + 5, cx + 115, cy + 205],
+            start=180,
+            end=360,
+            fill=accent_color,
+        )
+
+        now_str = datetime.now().strftime("%H:%M:%S.%f")[:-4]
+        draw.text(
+            (42, 42),
+            f"LIVE VIEW • {self.model_name.upper()}",
+            fill=ink_color,
+        )
+        draw.text(
+            (42, height - 56),
+            f"EOS LIVE STREAM  |  {now_str}  |  READY TO POSE ♡",
+            fill=ink_color,
+        )
+
+        buf = io.BytesIO()
+        image.save(buf, format="JPEG", quality=80)
+        return buf.getvalue()

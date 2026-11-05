@@ -1,5 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
-from backend.app.schemas.session import PrintRequest, ProcessImageRequest, SessionDetailResponse
+from backend.app.schemas.session import (
+    CustomOverlayUploadRequest,
+    PrintRequest,
+    ProcessImageRequest,
+    SessionDetailResponse,
+)
 from backend.app.services.printer import get_printer_service
 from backend.app.services.session import get_session_manager, SessionTransitionError
 from backend.app.services.image.processor import ImageProcessor
@@ -87,6 +92,7 @@ def process_session_image(payload: ProcessImageRequest = ProcessImageRequest()):
             template_id=payload.template_id,
             filter_name=payload.filter_name,
             frame_color=payload.frame_color,
+            sticker_id=payload.sticker_id,
             custom_text=payload.custom_text,
             selected_photo_ids=payload.selected_photo_ids,
         )
@@ -101,8 +107,50 @@ def process_session_image(payload: ProcessImageRequest = ProcessImageRequest()):
 
 @router.get("/templates")
 def get_available_templates():
-    """Return available photostrip/grid templates and frame color themes for the Kiosk UI."""
+    """Return available photostrip/grid templates, frame color themes, and sticker options for the Kiosk UI."""
     return {
-        "templates": ImageProcessor.AVAILABLE_TEMPLATES,
+        "templates": ImageProcessor.get_templates_with_overlay_status(),
         "frame_themes": list(ImageProcessor.FRAME_THEMES.values()),
+        "sticker_options": ImageProcessor.STICKER_OPTIONS,
+    }
+
+
+@router.post("/templates/{template_id}/overlay")
+def upload_custom_template_overlay(
+    template_id: str, payload: CustomOverlayUploadRequest
+):
+    """Upload a custom transparent PNG overlay for a specific template layout."""
+    tpl = ImageProcessor.get_template(template_id)
+    if not tpl:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template '{template_id}' not found.",
+        )
+    try:
+        saved_path = ImageProcessor.save_custom_overlay(
+            template_id, payload.image_data
+        )
+        return {
+            "success": True,
+            "template_id": template_id,
+            "overlay_path": str(saved_path),
+            "overlay_url": f"/template-assets/layouts/{template_id}.png",
+            "message": f"Custom PNG overlay for '{template_id}' saved successfully.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid PNG image data: {str(e)}",
+        )
+
+
+@router.delete("/templates/{template_id}/overlay")
+def remove_custom_template_overlay(template_id: str):
+    """Remove a custom PNG overlay from a template layout so it reverts to default vector ornaments."""
+    removed = ImageProcessor.delete_custom_overlay(template_id)
+    return {
+        "success": True,
+        "template_id": template_id,
+        "removed": removed,
+        "message": "Custom overlay removed." if removed else "No custom overlay was present.",
     }

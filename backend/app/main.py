@@ -31,6 +31,8 @@ app.add_middleware(
 
 # Mount local storage folder for serving captures, thumbnails, and processed images
 app.mount("/storage", StaticFiles(directory=str(settings.STORAGE_DIR)), name="storage")
+settings.TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/template-assets", StaticFiles(directory=str(settings.TEMPLATES_DIR)), name="template_assets")
 
 # Include Routers
 app.include_router(camera_router)

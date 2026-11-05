@@ -11,10 +11,12 @@ import { TemplateSelector } from "@/components/kiosk/TemplateSelector";
 import { PhotoPreview } from "@/components/kiosk/PhotoPreview";
 import { PrintingScreen } from "@/components/kiosk/PrintingScreen";
 import { CompletionScreen } from "@/components/kiosk/CompletionScreen";
+import { PaymentModal } from "@/components/kiosk/PaymentModal";
 import { OperatorModal } from "@/components/OperatorModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { AlertIcon, RefreshIcon, SpinnerIcon } from "@/components/icons";
+import { getFilterCss } from "@/lib/defaults";
 
 const STEP_ORDER: Record<string, number> = {
   WELCOME: 0,
@@ -42,6 +44,8 @@ export default function KioskHomePage() {
     setSelectedTemplate,
     selectedFrameColor,
     setSelectedFrameColor,
+    selectedFilter,
+    setSelectedFilter,
     selectedCountdownSeconds,
     setSelectedCountdownSeconds,
     countdown,
@@ -57,9 +61,14 @@ export default function KioskHomePage() {
     politeMessage,
     assertiveMessage,
     webcam,
+    operatorConfig,
+    paymentModalOpen,
+    setPaymentModalOpen,
+    confirmPaymentAndProceed,
     openPreparationStep,
     backToWelcome,
     startBoothSession,
+    triggerCaptureNow,
     proceedFromReview,
     retakeCurrentPhoto,
     retryFailedCapture,
@@ -182,10 +191,17 @@ export default function KioskHomePage() {
             onSelectFrameColor={setSelectedFrameColor}
             selectedCountdownSeconds={selectedCountdownSeconds}
             onSelectCountdownSeconds={setSelectedCountdownSeconds}
+            selectedFilter={selectedFilter}
+            onSelectFilter={setSelectedFilter}
             cameraSource={webcam.cameraSource}
             onChangeCameraSource={webcam.setCameraSource}
             facingMode={webcam.facingMode}
             onToggleFacingMode={webcam.toggleFacingMode}
+            devices={webcam.devices}
+            selectedDeviceId={webcam.selectedDeviceId}
+            onSelectDeviceId={webcam.setSelectedDeviceId}
+            isMirrored={webcam.isMirrored}
+            onToggleMirror={webcam.toggleMirror}
             streamReady={webcam.streamReady}
             webcamError={webcam.webcamError}
             deviceLabel={webcam.deviceLabel}
@@ -204,20 +220,25 @@ export default function KioskHomePage() {
           session && (
             <CountdownOverlay
               session={session}
+              cameraStatus={cameraStatus}
               countdown={countdown}
               reviewCountdown={reviewCountdown}
+              onCaptureNow={triggerCaptureNow}
               onProceedNext={proceedFromReview}
               onRetakeCurrent={retakeCurrentPhoto}
               isBusy={isBusy}
               captureError={captureError}
               cameraSource={webcam.cameraSource}
               facingMode={webcam.facingMode}
+              isMirrored={webcam.isMirrored}
               streamReady={webcam.streamReady}
               webcamError={webcam.webcamError}
               deviceLabel={webcam.deviceLabel}
               attachVideoRef={webcam.attachVideoRef}
+              onRetryWebcam={webcam.retryWebcam}
               onRetryCapture={retryFailedCapture}
               onAbort={abortCurrentSession}
+              filterCss={getFilterCss(selectedFilter)}
             />
           )}
 
@@ -341,6 +362,15 @@ export default function KioskHomePage() {
           </Card>
         </section>
       )}
+
+      {/* Payment Gate Modal (QRIS & Voucher) when enabled by Operator */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        amountIdr={operatorConfig.sessionPriceIdr ?? 35000}
+        validVoucherCodes={operatorConfig.voucherCodes}
+        onPaymentSuccess={confirmPaymentAndProceed}
+      />
 
       {/* Hidden Operator Diagnostics Modal */}
       <OperatorModal

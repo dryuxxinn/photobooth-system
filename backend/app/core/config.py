@@ -14,9 +14,12 @@ class Settings:
     SERVER_HOST: str = os.getenv("SERVER_HOST", "0.0.0.0")
     SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8000"))
 
-    # Camera: "simulation" or "gphoto"
-    CAMERA_DRIVER: str = os.getenv("CAMERA_DRIVER", "simulation")
-    CAMERA_MODEL: str = os.getenv("CAMERA_MODEL", "Canon EOS 700D")
+    # Camera: "simulation", "gphoto" (USB), or "wifi" (Sony HTTP Remote API / PTP-IP)
+    CAMERA_DRIVER: str = os.getenv("CAMERA_DRIVER", "wifi")
+    CAMERA_MODEL: str = os.getenv("CAMERA_MODEL", "Sony Alpha a6400 (Wi-Fi)")
+    CAMERA_WIFI_IP: str = os.getenv("CAMERA_WIFI_IP", "192.168.122.1")
+    CAMERA_WIFI_PORT: int = int(os.getenv("CAMERA_WIFI_PORT", "10000"))
+    CAMERA_WIFI_PROTOCOL: str = os.getenv("CAMERA_WIFI_PROTOCOL", "sony_http")
 
     # Printer: "simulation" or "cups"
     PRINTER_DRIVER: str = os.getenv("PRINTER_DRIVER", "simulation")

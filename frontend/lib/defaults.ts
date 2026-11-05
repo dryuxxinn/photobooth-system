@@ -147,10 +147,105 @@ export const DEFAULT_TEMPLATES: TemplateOption[] = [
   },
 ];
 
-export const PHOTO_FILTERS = [
-  { id: "original", name: "Natural ✨", desc: "Warna asli cerah" },
-  { id: "warm", name: "Peachy Warm 🌸", desc: "Rona hangat lembut" },
-  { id: "vintage", name: "Film Retro 🎞️", desc: "Sentuhan klasik" },
-  { id: "bw", name: "Mono B&W 🖤", desc: "Hitam putih dramatis" },
-  { id: "contrast", name: "Crisp Pop 🎀", desc: "Kontras lebih tegas" },
-] as const;
+export interface PhotoFilterOption {
+  id: string;
+  name: string;
+  desc: string;
+  css: string;
+}
+
+export const PHOTO_FILTERS: PhotoFilterOption[] = [
+  {
+    id: "original",
+    name: "Natural ✨",
+    desc: "Warna asli jernih natural",
+    css: "none",
+  },
+  {
+    id: "beauty",
+    name: "Soft Beauty 🌸",
+    desc: "Kulit halus & cerah merona",
+    css: "brightness(1.08) contrast(0.96) saturate(1.08) drop-shadow(0 0 6px rgba(255,182,193,0.3))",
+  },
+  {
+    id: "bw",
+    name: "Classic Mono 🖤",
+    desc: "Hitam putih studio kontras",
+    css: "grayscale(100%) contrast(1.2) brightness(1.04)",
+  },
+  {
+    id: "warm",
+    name: "Peachy Warm 🍑",
+    desc: "Rona keemasan hangat lembut",
+    css: "sepia(0.2) saturate(1.25) brightness(1.05) hue-rotate(-8deg)",
+  },
+  {
+    id: "cool",
+    name: "Dreamy Cool ❄️",
+    desc: "Pastel sejuk Seoul studio",
+    css: "hue-rotate(12deg) saturate(1.1) brightness(1.06) contrast(1.02)",
+  },
+  {
+    id: "vintage",
+    name: "Film Retro 🎞️",
+    desc: "Nuansa film vintage analog 90s",
+    css: "sepia(0.48) contrast(1.08) brightness(0.96) saturate(1.12)",
+  },
+  {
+    id: "rosy",
+    name: "Rosy Blush 💕",
+    desc: "Pastel pink merona manis",
+    css: "brightness(1.06) saturate(1.22) hue-rotate(-15deg)",
+  },
+  {
+    id: "y2k",
+    name: "Y2K Cyber Pop 💿",
+    desc: "Warna pop & dreamy bloom",
+    css: "contrast(1.22) saturate(1.38) brightness(1.06)",
+  },
+  {
+    id: "contrast",
+    name: "Crisp Pop 🎀",
+    desc: "Kontras tegas & tajam",
+    css: "contrast(1.28) saturate(1.18) brightness(1.02)",
+  },
+  {
+    id: "moody",
+    name: "Moody Noir ☕",
+    desc: "Warm latte & soft shadow",
+    css: "sepia(0.3) contrast(1.15) brightness(0.94) saturate(0.9)",
+  },
+];
+
+export function getFilterCss(filterId?: string): string {
+  const found = PHOTO_FILTERS.find((f) => f.id === filterId);
+  return found?.css || "none";
+}
+
+export const DEFAULT_STICKER_OPTIONS = [
+  {
+    id: "sweet_bows",
+    name: "Mix Pita & Bunga 🎀",
+    desc: "Kombinasi pita, hati, bunga & bintang",
+  },
+  {
+    id: "hearts_only",
+    name: "Lovely Hearts ♡",
+    desc: "Stiker hati manis di setiap sudut foto",
+  },
+  {
+    id: "flowers_only",
+    name: "Cherry Blossom ✿",
+    desc: "Stiker bunga pastel di setiap sudut foto",
+  },
+  {
+    id: "sparkles_only",
+    name: "Y2K Sparkles ✨",
+    desc: "Bintang kilau berkilauan",
+  },
+  {
+    id: "none",
+    name: "Tanpa Stiker (Clean)",
+    desc: "Bingkai bersih minimalis tanpa stiker sudut",
+  },
+];

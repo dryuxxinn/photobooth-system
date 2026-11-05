@@ -20,9 +20,15 @@ import {
 import {
   DEFAULT_FRAME_THEMES,
   DEFAULT_TEMPLATES,
+  getFilterCss,
 } from "@/lib/defaults";
 import { getWsUrl, photoboothApi } from "@/services/api";
 import { useWebcam } from "@/hooks/useWebcam";
+import {
+  playCountdownBeep,
+  playShutterSound,
+  playSuccessChime,
+} from "@/lib/sound";
 
 export { DEFAULT_FRAME_THEMES, DEFAULT_TEMPLATES };
 
@@ -50,6 +56,7 @@ export function usePhotoboothSession() {
   const [selectedFrameColor, setSelectedFrameColor] = useState<string>("pink");
   const [selectedCountdownSeconds, setSelectedCountdownSeconds] =
     useState<number>(3);
+  const [selectedFilter, setSelectedFilter] = useState<string>("original");
   const [reviewCountdown, setReviewCountdown] = useState<number | null>(null);
 
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -60,6 +67,7 @@ export function usePhotoboothSession() {
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [printCopies, setPrintCopies] = useState<number>(1);
   const [imageVersion, setImageVersion] = useState<number>(1);
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
 
   // Centralized ARIA live region messages
   const [politeMessage, setPoliteMessage] = useState<string>("");
@@ -73,6 +81,7 @@ export function usePhotoboothSession() {
   const webcam = useWebcam({ active: webcamActive });
 
   const abortFlowRef = useRef(false);
+  const skipCountdownRef = useRef(false);
   const sequenceRunningRef = useRef(false);
   const customizingRef = useRef(false);
   const reviewResolverRef = useRef<((choice: "next" | "retake") => void) | null>(
@@ -87,6 +96,18 @@ export function usePhotoboothSession() {
     const cfg = loadOperatorConfig();
     setOperatorConfig(cfg);
     setSelectedCountdownSeconds(cfg.countdownSeconds || COUNTDOWN_SECONDS);
+    if (cfg.defaultFilter) {
+      setSelectedFilter(cfg.defaultFilter);
+    }
+    if (cfg.cameraSourceMode) {
+      webcam.setCameraSource(cfg.cameraSourceMode);
+    }
+    if (typeof cfg.isMirrored === "boolean") {
+      webcam.setIsMirrored(cfg.isMirrored);
+    }
+    if (cfg.preferredDeviceId) {
+      webcam.setSelectedDeviceId(cfg.preferredDeviceId);
+    }
     const defaultTpl =
       DEFAULT_TEMPLATES.find((t) => t.id === cfg.defaultTemplateId) ||
       DEFAULT_TEMPLATES[0];
@@ -152,11 +173,16 @@ export function usePhotoboothSession() {
     }
   }, []);
 
+  const triggerCaptureNow = useCallback(() => {
+    skipCountdownRef.current = true;
+  }, []);
+
   const runAutomatedCaptureSequence = useCallback(
     async (activeSession: SessionDetail) => {
       if (sequenceRunningRef.current) return;
       sequenceRunningRef.current = true;
       abortFlowRef.current = false;
+      skipCountdownRef.current = false;
       setCaptureError(null);
       setKioskStep("CAPTURING");
 
@@ -167,6 +193,7 @@ export function usePhotoboothSession() {
       try {
         while (currentPose <= totalPhotos) {
           if (abortFlowRef.current) return;
+          skipCountdownRef.current = false;
 
           setPoliteMessage(
             `Bersiap untuk foto ke-${currentPose} dari ${totalPhotos}`
@@ -177,8 +204,16 @@ export function usePhotoboothSession() {
               setCountdown(null);
               return;
             }
+            if (skipCountdownRef.current) {
+              break;
+            }
             setCountdown(sec);
-            await sleep(1000);
+            playCountdownBeep(sec, operatorConfig.enableSoundEffects ?? true);
+            // Poll in 100ms increments so "Jepret Sekarang" responds immediately
+            for (let tick = 0; tick < 10; tick++) {
+              if (abortFlowRef.current || skipCountdownRef.current) break;
+              await sleep(100);
+            }
           }
 
           if (abortFlowRef.current) {
@@ -187,13 +222,14 @@ export function usePhotoboothSession() {
           }
 
           setCountdown(0);
+          playShutterSound(operatorConfig.enableSoundEffects ?? true);
           setIsFlashing(true);
           setTimeout(() => setIsFlashing(false), 420);
 
           let capturedSuccessfully = false;
           try {
             setIsBusy(true);
-            const webcamImageData = webcam.captureFrameDataUrl();
+            const webcamImageData = webcam.captureFrameDataUrl(getFilterCss(selectedFilter));
             await photoboothApi.capturePhoto(
               activeSession.session_id,
               webcamImageData
@@ -248,6 +284,7 @@ export function usePhotoboothSession() {
 
           // User proceeded or 5s timed out
           if (currentPose >= totalPhotos) {
+            playSuccessChime(operatorConfig.enableSoundEffects ?? true);
             setImageVersion((v) => v + 1);
             setKioskStep("PHOTO_SELECTION");
             return;
@@ -280,7 +317,12 @@ export function usePhotoboothSession() {
         photoboothApi.getTemplatesData().catch(() => null),
       ]);
 
-      if (cam) setCameraStatus(cam);
+      if (cam) {
+        setCameraStatus(cam);
+        if (cam.driver === "wifi" && cam.hardware_reachable) {
+          webcam.setCameraSource("server");
+        }
+      }
       if (prn) setPrinterStatus(prn);
       if (tplData?.templates && tplData.templates.length > 0) {
         setTemplates(tplData.templates);
@@ -372,8 +414,18 @@ export function usePhotoboothSession() {
     setCompletedSession(null);
     const cfg = loadOperatorConfig();
     setOperatorConfig(cfg);
+    if (cfg.requirePayment) {
+      setPaymentModalOpen(true);
+      return;
+    }
     setKioskStep("PREPARATION");
   }, []);
+
+  const confirmPaymentAndProceed = useCallback(() => {
+    setPaymentModalOpen(false);
+    playSuccessChime(operatorConfig.enableSoundEffects ?? true);
+    setKioskStep("PREPARATION");
+  }, [operatorConfig.enableSoundEffects]);
 
   const backToWelcome = useCallback(() => {
     setErrorBanner(null);
@@ -393,6 +445,7 @@ export function usePhotoboothSession() {
           photos_required: 6, // Always capture 6 poses per session
           template_id: selectedTemplate.id,
           frame_color: selectedFrameColor,
+          filter_name: selectedFilter,
         });
         setSession(started);
         setState(started.status);
@@ -405,7 +458,7 @@ export function usePhotoboothSession() {
         setIsBusy(false);
       }
     },
-    [selectedTemplate, selectedFrameColor, runAutomatedCaptureSequence]
+    [selectedTemplate, selectedFrameColor, selectedFilter, runAutomatedCaptureSequence]
   );
 
   const retryFailedCapture = useCallback(async () => {
@@ -453,6 +506,7 @@ export function usePhotoboothSession() {
       filterName?: string;
       frameColor?: string;
       templateId?: string;
+      stickerId?: string;
       customText?: string;
       selectedPhotoIds?: string[];
     }) => {
@@ -474,6 +528,7 @@ export function usePhotoboothSession() {
           filter_name: opts.filterName ?? session.filter_name ?? "original",
           frame_color: opts.frameColor ?? session.frame_color ?? "pink",
           template_id: opts.templateId ?? session.template_id ?? undefined,
+          sticker_id: opts.stickerId ?? session.sticker_id ?? "sweet_bows",
           custom_text: opts.customText,
           selected_photo_ids:
             opts.selectedPhotoIds ?? session.selected_photo_ids ?? undefined,
@@ -482,6 +537,7 @@ export function usePhotoboothSession() {
         setState(updated.status);
         setImageVersion((v) => v + 1);
         setKioskStep("PREVIEW");
+        playSuccessChime(operatorConfig.enableSoundEffects ?? true);
         setPoliteMessage("Desain frame berhasil diterapkan");
       } catch (err: any) {
         const msg = err?.message || "Gagal memproses komposisi foto.";
@@ -492,7 +548,13 @@ export function usePhotoboothSession() {
         setIsBusy(false);
       }
     },
-    [session, selectedTemplate.id, selectedFrameColor, templates]
+    [
+      session,
+      selectedTemplate.id,
+      selectedFrameColor,
+      templates,
+      operatorConfig.enableSoundEffects,
+    ]
   );
 
   const printAndFinish = useCallback(
@@ -628,6 +690,8 @@ export function usePhotoboothSession() {
     setSelectedTemplate: handleSelectTemplate,
     selectedFrameColor,
     setSelectedFrameColor,
+    selectedFilter,
+    setSelectedFilter,
     selectedCountdownSeconds,
     setSelectedCountdownSeconds,
     countdown,
@@ -643,9 +707,14 @@ export function usePhotoboothSession() {
     politeMessage,
     assertiveMessage,
     webcam,
+    operatorConfig,
+    paymentModalOpen,
+    setPaymentModalOpen,
+    confirmPaymentAndProceed,
     openPreparationStep,
     backToWelcome,
     startBoothSession,
+    triggerCaptureNow,
     proceedFromReview,
     retakeCurrentPhoto,
     retryFailedCapture,

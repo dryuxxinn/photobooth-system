@@ -1,10 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CameraStatus, PhotoItem } from "@/types/photobooth";
-import { CameraSourceMode, WebcamFacingMode } from "@/hooks/useWebcam";
-import { resolveStorageUrl } from "@/services/api";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  CameraSourceMode,
+  WebcamFacingMode,
+  formatCameraLabel,
+  isCaptureCardDevice,
+} from "@/hooks/useWebcam";
+import { getApiBaseUrl, resolveStorageUrl } from "@/services/api";
 import {
   CameraIcon,
   HeartIcon,
@@ -23,11 +27,17 @@ interface CameraPreviewProps {
   onChangeCameraSource?: (source: CameraSourceMode) => void;
   facingMode?: WebcamFacingMode;
   onToggleFacingMode?: () => void;
+  devices?: MediaDeviceInfo[];
+  selectedDeviceId?: string | null;
+  onSelectDeviceId?: (deviceId: string) => void;
+  isMirrored?: boolean;
+  onToggleMirror?: () => void;
   streamReady?: boolean;
   webcamError?: string | null;
   deviceLabel?: string;
   attachVideoRef?: (node: HTMLVideoElement | null) => void;
   onRetryWebcam?: () => void;
+  filterCss?: string;
   children?: React.ReactNode;
   className?: string;
   containerClassName?: string;
@@ -44,11 +54,17 @@ export function CameraPreview({
   onChangeCameraSource,
   facingMode = "user",
   onToggleFacingMode,
+  devices = [],
+  selectedDeviceId = null,
+  onSelectDeviceId,
+  isMirrored = true,
+  onToggleMirror,
   streamReady = false,
   webcamError = null,
   deviceLabel = "Webcam / Kamera Perangkat",
   attachVideoRef,
   onRetryWebcam,
+  filterCss = "none",
   children,
   className = "",
   containerClassName = "",
@@ -59,8 +75,24 @@ export function CameraPreview({
     ? resolveStorageUrl(latestPhoto.preview_url || latestPhoto.thumbnail_url)
     : "";
 
+  const [serverPreviewTick, setServerPreviewTick] = useState<number>(0);
+  const [serverPreviewFailed, setServerPreviewFailed] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isUsingWebcam || isReviewing) return;
+    setServerPreviewFailed(false);
+    setServerPreviewTick(Date.now());
+    const interval = setInterval(() => {
+      setServerPreviewTick(Date.now());
+    }, 180);
+    return () => clearInterval(interval);
+  }, [isUsingWebcam, isReviewing]);
+
+  const serverLiveFrameUrl = `${getApiBaseUrl()}/camera/preview-frame?t=${serverPreviewTick}`;
+  const isCapture = isCaptureCardDevice(deviceLabel);
+
   return (
-    <div className={`w-full flex flex-col items-center justify-center gap-2 ${className || "max-w-xl md:max-w-2xl"}`}>
+    <div className={`w-full flex flex-col items-center justify-center gap-2.5 ${className || "max-w-xl md:max-w-2xl"}`}>
       {/* Main 3:2 Camera Viewport */}
       <div className={`relative w-full max-w-[calc(76dvh*1.5)] aspect-[3/2] max-h-[76dvh] rounded-[2.5rem] bg-sweet-surface border-4 border-white/90 shadow-sweetLg overflow-hidden flex flex-col items-center justify-center ${containerClassName}`}>
         {/* Top Status Overlay inside Camera Frame */}
@@ -68,12 +100,24 @@ export function CameraPreview({
           {isUsingWebcam ? (
             <div className="px-3.5 py-1.5 rounded-full bg-emerald-500/90 text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm">
               <span className="size-2 rounded-full bg-white animate-ping" />
-              <span>{streamReady ? "Live Webcam" : "Menyiapkan Kamera..."}</span>
+              <span>
+                {streamReady
+                  ? isCapture
+                    ? "Live DSLR (USB Capture Card)"
+                    : `Live: ${deviceLabel}`
+                  : "Menyiapkan Kamera..."}
+              </span>
             </div>
           ) : (
-            <div className={`px-3.5 py-1.5 rounded-full ${serverCameraReady ? "bg-emerald-500/90" : "bg-rose-500/90"} text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm`}>
+            <div className={`px-3.5 py-1.5 rounded-full ${serverCameraReady ? "bg-purple-600/90" : "bg-rose-500/90"} text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm`}>
               <span className="size-2 rounded-full bg-white animate-ping" />
-              <span>{serverCameraReady ? `Kamera: ${cameraStatus?.model || "Canon DSLR"}` : "Kamera Terputus"}</span>
+              <span>
+                {serverCameraReady
+                  ? cameraStatus?.driver === "wifi"
+                    ? `Live Wi-Fi: ${cameraStatus?.model || "Sony Alpha a6400"} (${cameraStatus?.wifi_ip || "192.168.122.1"})`
+                    : `Kamera Server: ${cameraStatus?.model || "Canon DSLR"}`
+                  : "Kamera Server Terputus"}
+              </span>
             </div>
           )}
 
@@ -87,16 +131,17 @@ export function CameraPreview({
           </div>
         </div>
 
-        {/* Live Browser Webcam / iPad Camera Video Element */}
+        {/* Live Browser Webcam / iPad USB Capture Card Video Element */}
         {isUsingWebcam && (
           <video
             ref={attachVideoRef}
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            style={{ filter: filterCss || "none" }}
+            className={`w-full h-full object-cover transition-all duration-300 ${
               streamReady ? "opacity-100" : "opacity-0 absolute inset-0 pointer-events-none"
-            } ${facingMode === "user" ? "-scale-x-100" : ""}`}
+            } ${isMirrored ? "-scale-x-100" : ""}`}
           />
         )}
 
@@ -125,9 +170,8 @@ export function CameraPreview({
           </div>
         )}
 
-        {/* Mini corner thumbnail of latest captured photo when live webcam is active (hidden when reviewing) */}
-        {isUsingWebcam &&
-          streamReady &&
+        {/* Mini corner thumbnail of latest captured photo when live view is active (hidden when reviewing) */}
+        {(streamReady || !isUsingWebcam) &&
           latestSrc &&
           mode === "capturing" &&
           !isReviewing && (
@@ -146,11 +190,13 @@ export function CameraPreview({
         {/* Fallback view when using Server Camera OR when Webcam permission is not yet active */}
         {(!isUsingWebcam || !streamReady) && (
           <>
-            {latestSrc && mode === "capturing" ? (
+            {!isUsingWebcam && serverCameraReady && !serverPreviewFailed ? (
               <img
-                src={latestSrc}
-                alt={`Hasil foto ke-${latestPhoto?.index || photosTaken}`}
-                className="w-full h-full object-cover"
+                src={serverLiveFrameUrl}
+                alt="Live View Kamera DSLR / Server"
+                style={{ filter: filterCss || "none" }}
+                onError={() => setServerPreviewFailed(true)}
+                className="w-full h-full object-cover transition-all duration-300"
               />
             ) : (
               <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-3.5">
@@ -189,7 +235,7 @@ export function CameraPreview({
                 ) : (
                   <p className="text-xs sm:text-sm text-sweet-muted font-medium max-w-md">
                     {mode === "preparation"
-                      ? "Gunakan Webcam Laptop / Kamera iPad secara langsung, atau pilih mode Kamera Server (Simulasi / Canon DSLR)."
+                      ? "Mendukung 2 opsi: DSLR via Capture Card iPad (USB-C) atau DSLR via USB Server (Laptop/PC)."
                       : "Bersiap berpose! Foto yang baru diambil akan langsung tampil di layar ini."}
                   </p>
                 )}
@@ -201,56 +247,6 @@ export function CameraPreview({
         {/* Optional Countdown or Retry Overlay */}
         {children}
       </div>
-
-      {/* Camera Source Switcher Bar (Webcam/iPad vs Server Camera + Front/Rear Flip) */}
-      {mode === "preparation" && onChangeCameraSource && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-sweet-surface border border-sweet-border shadow-xs w-full max-w-[calc(76dvh*1.5)] mx-auto">
-          <div className="flex items-center gap-1.5">
-            <span className="font-heading font-bold text-xs text-sweet-muted mr-1">
-              Sumber Kamera:
-            </span>
-            <button
-              type="button"
-              aria-pressed={cameraSource === "webcam"}
-              onClick={() => onChangeCameraSource("webcam")}
-              className={`min-h-[38px] px-3.5 py-1.5 rounded-full font-heading font-bold text-xs border transition-all ${
-                cameraSource === "webcam"
-                  ? "bg-sweet-primary text-sweet-text border-sweet-primaryStrong shadow-2xs"
-                  : "bg-sweet-bg text-sweet-muted border-sweet-border hover:bg-sweet-blush/50"
-              }`}
-            >
-              Webcam / Kamera iPad
-            </button>
-            <button
-              type="button"
-              aria-pressed={cameraSource === "server"}
-              onClick={() => onChangeCameraSource("server")}
-              className={`min-h-[38px] px-3.5 py-1.5 rounded-full font-heading font-bold text-xs border transition-all ${
-                cameraSource === "server"
-                  ? "bg-sweet-secondary text-sweet-text border-[#9E8CE0] shadow-2xs"
-                  : "bg-sweet-bg text-sweet-muted border-sweet-border hover:bg-sweet-lavenderSoft"
-              }`}
-            >
-              Kamera Server (Simulasi / DSLR)
-            </button>
-          </div>
-
-          {cameraSource === "webcam" && onToggleFacingMode && (
-            <button
-              type="button"
-              onClick={onToggleFacingMode}
-              className="min-h-[38px] px-3.5 py-1.5 rounded-full bg-sweet-bg hover:bg-sweet-blush/60 border border-sweet-border font-heading font-bold text-xs text-sweet-text inline-flex items-center gap-1.5 transition-colors"
-            >
-              <RefreshIcon className="size-3.5 text-sweet-primaryStrong" />
-              <span>
-                {facingMode === "user"
-                  ? "Kamera Depan (Putar ke Belakang)"
-                  : "Kamera Belakang (Putar ke Depan)"}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

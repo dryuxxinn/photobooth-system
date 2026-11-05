@@ -60,3 +60,49 @@ def test_session_print_and_sqlite_history(test_client: TestClient):
     jobs_res = test_client.get("/printer/jobs")
     assert jobs_res.status_code == 200
     assert len(jobs_res.json()["jobs"]) == 1
+
+
+def test_gif_generation_overlay_payment_and_liveview(test_client: TestClient):
+    import base64
+    import io
+    from PIL import Image
+
+    # 1. Live view preview frame endpoint
+    frame_res = test_client.get("/camera/preview-frame")
+    assert frame_res.status_code == 200
+    assert frame_res.headers["content-type"] == "image/jpeg"
+    assert len(frame_res.content) > 500
+
+    # 2. Custom PNG overlay upload & delete
+    png_buf = io.BytesIO()
+    overlay_img = Image.new("RGBA", (200, 400), (255, 192, 203, 90))
+    overlay_img.save(png_buf, format="PNG")
+    b64_png = "data:image/png;base64," + base64.b64encode(png_buf.getvalue()).decode("ascii")
+
+    up_res = test_client.post(
+        "/templates/classic_strip_3/overlay",
+        json={"image_data": b64_png},
+    )
+    assert up_res.status_code == 200
+    assert up_res.json()["success"] is True
+
+    del_res = test_client.delete("/templates/classic_strip_3/overlay")
+    assert del_res.status_code == 200
+    assert del_res.json()["removed"] is True
+
+    # 3. Payment QRIS & Voucher verification
+    qris_res = test_client.post("/session/payment/qris", json={"amount": 35000})
+    assert qris_res.status_code == 200
+    tx_id = qris_res.json()["transaction_id"]
+    assert qris_res.json()["status"] == "PENDING"
+
+    confirm_res = test_client.post(f"/session/payment/qris/{tx_id}/confirm")
+    assert confirm_res.status_code == 200
+    assert confirm_res.json()["status"] == "PAID"
+
+    v_ok = test_client.post("/session/payment/voucher", json={"code": "sweet2026"})
+    assert v_ok.status_code == 200
+    assert v_ok.json()["valid"] is True
+
+    v_bad = test_client.post("/session/payment/voucher", json={"code": "INVALIDCODE"})
+    assert v_bad.status_code == 400

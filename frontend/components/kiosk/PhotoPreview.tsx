@@ -42,7 +42,7 @@ interface PhotoPreviewProps {
   onFinishWithoutPrint: () => Promise<void>;
 }
 
-type ViewTab = "composite" | "slideshow" | "originals";
+type ViewTab = "composite" | "gif" | "slideshow" | "originals";
 
 export function PhotoPreview({
   session,
@@ -83,6 +83,8 @@ export function PhotoPreview({
     imageVersion
   );
   const rawCompositeUrl = resolveStorageUrl(session.processed_image_url);
+  const gifUrl = resolveStorageUrl(session.gif_url, imageVersion);
+  const rawGifUrl = resolveStorageUrl(session.gif_url);
 
   const activeTemplate = templates.find((t) => t.id === session.template_id);
   const activeTheme = frameThemes.find((f) => f.id === session.frame_color);
@@ -184,6 +186,29 @@ export function PhotoPreview({
               </div>
             )}
 
+            {viewTab === "gif" && (
+              <div className="flex flex-col items-center justify-center gap-3 py-2">
+                {gifUrl ? (
+                  <>
+                    <img
+                      src={gifUrl}
+                      alt="Animasi Boomerang GIF sesi Sweet Studio"
+                      className="max-h-[64dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
+                    />
+                    <StatusBadge tone="pink">
+                      Boomerang GIF Otomatis • Siap Unduh via QR ✨
+                    </StatusBadge>
+                  </>
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm font-heading font-bold text-sweet-muted">
+                      Menyiapkan animasi Boomerang GIF...
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {viewTab === "slideshow" && session.photos.length > 0 && (
               <div className="flex flex-col items-center justify-center gap-3 py-2">
                 <img
@@ -273,11 +298,12 @@ export function PhotoPreview({
               <div
                 role="group"
                 aria-label="Mode tampilan preview"
-                className="inline-flex items-center p-1 rounded-full bg-white/80 border border-white/90 shadow-xs gap-1"
+                className="inline-flex flex-wrap items-center p-1 rounded-full bg-white/80 border border-white/90 shadow-xs gap-1"
               >
                 {(
                   [
                     { id: "composite", label: "Hasil Cetak" },
+                    { id: "gif", label: "Boomerang GIF ✨" },
                     { id: "slideshow", label: "Slideshow" },
                     { id: "originals", label: "Foto Asli" },
                   ] as const
@@ -410,6 +436,7 @@ export function PhotoPreview({
         isOpen={qrOpen}
         onClose={() => setQrOpen(false)}
         imageUrl={rawCompositeUrl}
+        gifUrl={rawGifUrl}
         sessionId={session.session_id}
         onDownloadOrShare={handleShareOrDownload}
       />

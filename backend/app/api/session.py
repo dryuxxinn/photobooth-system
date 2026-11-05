@@ -1,12 +1,18 @@
+import uuid
+from datetime import datetime, timezone
+from typing import Dict, Any
 from fastapi import APIRouter, Body, HTTPException, status
 from backend.app.core.config import settings
 from backend.app.schemas.session import (
     CapturePhotoRequest,
+    CloudSyncRequest,
+    QrisCreateRequest,
     StartSessionRequest,
     SessionDetailResponse,
     SessionCurrentResponse,
     PhotoItem,
     PrintRequest,
+    VoucherVerifyRequest,
 )
 from backend.app.services.session import get_session_manager, SessionTransitionError
 from backend.app.services.camera import get_camera_service
@@ -14,6 +20,10 @@ from backend.app.services.printer import get_printer_service
 from backend.app.services.storage.database import get_db_service
 
 router = APIRouter(prefix="/session", tags=["Session"])
+
+# In-memory store for active QRIS payment transactions
+_qris_transactions: Dict[str, Dict[str, Any]] = {}
+DEFAULT_VALID_VOUCHERS = {"SWEET2026", "VIPFREE", "BESTIE", "DRYU100", "PROMO50"}
 
 
 @router.post(
@@ -32,6 +42,7 @@ def start_session(payload: StartSessionRequest = StartSessionRequest()):
             photos_required=photos_required,
             template_id=template_id,
             frame_color=payload.frame_color,
+            filter_name=payload.filter_name,
         )
         return SessionDetailResponse(**session)
     except SessionTransitionError as e:
@@ -129,6 +140,8 @@ def process_session(
     template_id: str | None = None,
     filter_name: str | None = None,
     frame_color: str | None = None,
+    sticker_id: str | None = None,
+    custom_text: str | None = None,
     selected_photo_ids: list[str] | None = None,
 ):
     manager = get_session_manager()
@@ -144,6 +157,8 @@ def process_session(
             template_id=template_id,
             filter_name=filter_name,
             frame_color=frame_color,
+            sticker_id=sticker_id,
+            custom_text=custom_text,
             selected_photo_ids=selected_photo_ids,
         )
         return SessionDetailResponse(**manager.get_current_session())
@@ -153,6 +168,110 @@ def process_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
+
+
+@router.post("/{session_id}/cloud-sync")
+def sync_session_cloud_link(
+    session_id: str, payload: CloudSyncRequest = CloudSyncRequest()
+):
+    """Generate or update the public / cloud share link for a session's digital gallery."""
+    manager = get_session_manager()
+    active_sess = manager.get_current_session()
+    base = (payload.public_base_url or "").strip().rstrip("/")
+    share_url = f"{base}/share/{session_id}" if base else f"/share/{session_id}"
+
+    if active_sess and active_sess["session_id"] == session_id:
+        active_sess["cloud_share_url"] = share_url
+        get_db_service().save_session(active_sess)
+        return {
+            "success": True,
+            "session_id": session_id,
+            "cloud_share_url": share_url,
+        }
+
+    db_sess = get_db_service().get_session(session_id)
+    if db_sess:
+        db_sess["cloud_share_url"] = share_url
+        get_db_service().save_session(db_sess)
+        return {
+            "success": True,
+            "session_id": session_id,
+            "cloud_share_url": share_url,
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Session '{session_id}' not found.",
+    )
+
+
+@router.post("/payment/qris")
+def create_qris_payment(payload: QrisCreateRequest = QrisCreateRequest()):
+    """Create a dynamic QRIS payment transaction for pay-per-session mode."""
+    tx_id = f"qris_{uuid.uuid4().hex[:10]}"
+    now = datetime.now(timezone.utc).isoformat()
+    qr_string = (
+        f"00020101021226580014ID.CO.QRIS.WWW0118936009143{tx_id.upper()}"
+        f"520458125303360540{payload.amount}5802ID5912SWEET STUDIO6007JAKARTA6304ABCD"
+    )
+    record = {
+        "transaction_id": tx_id,
+        "amount": payload.amount,
+        "package_name": payload.package_name or "Sweet Studio Session",
+        "qr_string": qr_string,
+        "status": "PENDING",
+        "created_at": now,
+        "paid_at": None,
+    }
+    _qris_transactions[tx_id] = record
+    return record
+
+
+@router.get("/payment/qris/{transaction_id}")
+def get_qris_payment_status(transaction_id: str):
+    record = _qris_transactions.get(transaction_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="QRIS transaction not found.",
+        )
+    return record
+
+
+@router.post("/payment/qris/{transaction_id}/confirm")
+def confirm_qris_payment(transaction_id: str):
+    """Simulate or confirm webhook payment completion for a QRIS transaction."""
+    record = _qris_transactions.get(transaction_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="QRIS transaction not found.",
+        )
+    record["status"] = "PAID"
+    record["paid_at"] = datetime.now(timezone.utc).isoformat()
+    return record
+
+
+@router.post("/payment/voucher")
+def verify_voucher_code(payload: VoucherVerifyRequest):
+    """Verify a cashier or event voucher code for starting a session."""
+    normalized = payload.code.strip().upper()
+    allowed = set(DEFAULT_VALID_VOUCHERS)
+    if payload.valid_codes:
+        for c in payload.valid_codes:
+            if c.strip():
+                allowed.add(c.strip().upper())
+
+    if normalized and normalized in allowed:
+        return {
+            "valid": True,
+            "code": normalized,
+            "message": "Kode voucher valid! Selamat berfoto ♡",
+        }
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Kode voucher tidak ditemukan atau sudah tidak berlaku.",
+    )
 
 
 @router.post("/{session_id}/print")

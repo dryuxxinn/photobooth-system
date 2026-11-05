@@ -10,8 +10,11 @@ services:
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8000
-      - CAMERA_DRIVER=${CAMERA_DRIVER:-simulation}
-      - CAMERA_MODEL=${CAMERA_MODEL:-Canon EOS 700D}
+      - CAMERA_DRIVER=${CAMERA_DRIVER:-wifi}
+      - CAMERA_MODEL=${CAMERA_MODEL:-Sony Alpha a6400 (Wi-Fi)}
+      - CAMERA_WIFI_IP=${CAMERA_WIFI_IP:-192.168.122.1}
+      - CAMERA_WIFI_PORT=${CAMERA_WIFI_PORT:-10000}
+      - CAMERA_WIFI_PROTOCOL=${CAMERA_WIFI_PROTOCOL:-sony_http}
       - PRINTER_DRIVER=${PRINTER_DRIVER:-simulation}
       - PRINTER_NAME=${PRINTER_NAME:-Photo_Printer_Default}
       - STORAGE_BASE_DIR=/app/storage

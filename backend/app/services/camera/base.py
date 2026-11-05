@@ -32,3 +32,9 @@ class CameraInterface(ABC):
         Returns metadata: success, width, height, path, timestamp.
         """
         pass
+
+    def capture_preview_bytes(self) -> bytes:
+        """
+        Capture a fast live-view JPEG frame as raw bytes for streaming to the Kiosk UI.
+        """
+        return b""

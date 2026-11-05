@@ -42,8 +42,12 @@ export interface SessionDetail {
   template_id?: string | null;
   filter_name?: string | null;
   frame_color?: string | null;
+  sticker_id?: string | null;
   processed_image_path?: string | null;
   processed_image_url?: string | null;
+  gif_path?: string | null;
+  gif_url?: string | null;
+  cloud_share_url?: string | null;
   started_at: string;
   completed_at?: string | null;
   error_message?: string | null;
@@ -55,6 +59,10 @@ export interface CameraStatus {
   driver: string;
   battery_level: number;
   message: string;
+  wifi_ip?: string | null;
+  wifi_port?: number | null;
+  wifi_protocol?: string | null;
+  hardware_reachable?: boolean | null;
 }
 
 export interface PrinterStatus {
@@ -113,6 +121,14 @@ export interface TemplateOption {
   prints_doubled?: boolean;
   default_frame?: string;
   description: string;
+  has_custom_overlay?: boolean;
+  custom_overlay_url?: string | null;
+}
+
+export interface StickerOption {
+  id: string;
+  name: string;
+  desc: string;
 }
 
 export interface FrameThemeOption {
@@ -128,4 +144,13 @@ export interface BoothOperatorConfig {
   enableTemplateSelectionStep: boolean;
   countdownSeconds: number;
   enabledTemplateIds: string[];
+  requirePayment?: boolean;
+  sessionPriceIdr?: number;
+  voucherCodes?: string[];
+  enableSoundEffects?: boolean;
+  publicShareBaseUrl?: string;
+  cameraSourceMode?: "webcam" | "server";
+  preferredDeviceId?: string | null;
+  isMirrored?: boolean;
+  defaultFilter?: string;
 }

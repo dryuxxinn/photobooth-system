@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { SessionDetail } from "@/types/photobooth";
+import { CameraStatus, SessionDetail } from "@/types/photobooth";
 import { CameraPreview } from "./CameraPreview";
 import { CameraSourceMode, WebcamFacingMode } from "@/hooks/useWebcam";
+import { getFilterCss } from "@/lib/defaults";
 import { ProgressIndicator } from "@/components/ui/ProgressIndicator";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,38 +18,48 @@ import {
 
 interface CountdownOverlayProps {
   session: SessionDetail;
+  cameraStatus?: CameraStatus | null;
   countdown: number | null;
   reviewCountdown: number | null;
+  onCaptureNow?: () => void;
   onProceedNext: () => void;
   onRetakeCurrent: () => void;
   isBusy: boolean;
   captureError: string | null;
   cameraSource: CameraSourceMode;
   facingMode: WebcamFacingMode;
+  isMirrored?: boolean;
   streamReady: boolean;
   webcamError: string | null;
   deviceLabel: string;
   attachVideoRef: (node: HTMLVideoElement | null) => void;
+  onRetryWebcam?: () => void;
   onRetryCapture: () => void;
   onAbort: () => void;
+  filterCss?: string;
 }
 
 export function CountdownOverlay({
   session,
+  cameraStatus = null,
   countdown,
   reviewCountdown,
+  onCaptureNow,
   onProceedNext,
   onRetakeCurrent,
   isBusy,
   captureError,
   cameraSource,
   facingMode,
+  isMirrored = true,
   streamReady,
   webcamError,
   deviceLabel,
   attachVideoRef,
+  onRetryWebcam,
   onRetryCapture,
   onAbort,
+  filterCss,
 }: CountdownOverlayProps) {
   const isReviewing = reviewCountdown !== null;
   const currentPoseNumber = Math.min(
@@ -106,7 +117,7 @@ export function CountdownOverlay({
       {/* Main Focused Camera Preview Stage - Expanded to feel immersive / full screen */}
       <div className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 z-10">
         <CameraPreview
-          cameraStatus={null}
+          cameraStatus={cameraStatus}
           latestPhoto={latestPhoto}
           photosRequired={session.photos_required}
           photosTaken={session.photos_taken}
@@ -114,10 +125,13 @@ export function CountdownOverlay({
           isReviewing={isReviewing}
           cameraSource={cameraSource}
           facingMode={facingMode}
+          isMirrored={isMirrored}
           streamReady={streamReady}
           webcamError={webcamError}
           deviceLabel={deviceLabel}
           attachVideoRef={attachVideoRef}
+          onRetryWebcam={onRetryWebcam}
+          filterCss={filterCss || (session.filter_name ? getFilterCss(session.filter_name) : "none")}
           className="w-full h-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex flex-col items-center justify-center"
         >
 
@@ -228,6 +242,17 @@ export function CountdownOverlay({
           </div>
         ) : (
           <div className="flex items-center gap-3">
+            {onCaptureNow && countdown !== null && countdown > 0 && !isBusy && (
+              <Button
+                variant="strong"
+                size="md"
+                onClick={onCaptureNow}
+                leftIcon={<CameraIcon className="size-4" />}
+                className="min-h-[44px] px-5 rounded-full font-heading font-extrabold text-xs sm:text-sm shadow-sweet"
+              >
+                Jepret Sekarang 📸
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="md"

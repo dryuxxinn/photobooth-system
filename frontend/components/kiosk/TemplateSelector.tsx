@@ -6,13 +6,14 @@ import {
   SessionDetail,
   TemplateOption,
 } from "@/types/photobooth";
-import { PHOTO_FILTERS } from "@/lib/defaults";
+import { DEFAULT_STICKER_OPTIONS, PHOTO_FILTERS } from "@/lib/defaults";
 import { inkFor } from "@/lib/color";
 import { LayoutMock } from "@/components/LayoutMock";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
+  BowIcon,
   CheckIcon,
   FlowerIcon,
   HeartIcon,
@@ -28,6 +29,7 @@ interface TemplateSelectorProps {
     templateId: string;
     frameColor: string;
     filterName: string;
+    stickerId?: string;
     customText?: string;
   }) => Promise<void>;
 }
@@ -53,6 +55,9 @@ export function TemplateSelector({
   );
   const [draftFilter, setDraftFilter] = useState<string>(
     session.filter_name || "original"
+  );
+  const [draftStickerId, setDraftStickerId] = useState<string>(
+    session.sticker_id || "sweet_bows"
   );
   const [draftCaption, setDraftCaption] = useState<string>(
     session.customer_name || ""
@@ -204,7 +209,7 @@ export function TemplateSelector({
           <Card variant="glass" padding="sm" className="space-y-2.5">
             <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
               <SparkleIcon className="size-4 text-sweet-primaryStrong" />
-              <span>3. Filter Warna Foto</span>
+              <span>3. Filter Warna & Beauty Cam</span>
             </h2>
             <div
               role="group"
@@ -226,6 +231,38 @@ export function TemplateSelector({
                     }`}
                   >
                     {flt.name}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* 4. Dekorasi Stiker Sudut Foto */}
+          <Card variant="glass" padding="sm" className="space-y-2.5">
+            <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
+              <BowIcon className="size-4 text-sweet-primaryStrong" />
+              <span>4. Stiker Dekorasi Frame</span>
+            </h2>
+            <div
+              role="group"
+              aria-label="Pilihan stiker dekorasi frame"
+              className="flex flex-wrap gap-2"
+            >
+              {DEFAULT_STICKER_OPTIONS.map((stk) => {
+                const isSelected = stk.id === draftStickerId;
+                return (
+                  <button
+                    key={stk.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setDraftStickerId(stk.id)}
+                    className={`min-h-[44px] px-3.5 py-1.5 rounded-full border-2 font-heading font-extrabold text-xs transition-all ${
+                      isSelected
+                        ? "bg-[#FFF0F5] border-[#F472B6] text-sweet-text shadow-sweet scale-[1.02]"
+                        : "bg-white/80 hover:bg-white border-white/90 text-sweet-text"
+                    }`}
+                  >
+                    {stk.name}
                   </button>
                 );
               })}
@@ -266,6 +303,7 @@ export function TemplateSelector({
               </label>
               <input
                 id="vibe-caption-input"
+                name="custom_caption"
                 type="text"
                 maxLength={24}
                 value={draftCaption}
@@ -285,6 +323,7 @@ export function TemplateSelector({
                 templateId: draftTemplateId,
                 frameColor: draftFrameColor,
                 filterName: draftFilter,
+                stickerId: draftStickerId,
                 customText: draftCaption.trim() || undefined,
               })
             }

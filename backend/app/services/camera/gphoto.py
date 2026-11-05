@@ -80,3 +80,21 @@ class GPhotoCamera(CameraInterface):
             "filename": target_path.name,
             "timestamp": now.isoformat()
         }
+
+    def capture_preview_bytes(self) -> bytes:
+        """
+        Capture a live-view preview frame from Canon EOS 700D via gphoto2 --capture-preview --stdout.
+        """
+        if not self.is_available() or not self._connected:
+            return b""
+        try:
+            result = subprocess.run(
+                ["gphoto2", "--capture-preview", "--stdout"],
+                capture_output=True,
+                timeout=4,
+            )
+            if result.returncode == 0 and result.stdout:
+                return result.stdout
+        except Exception:
+            pass
+        return b""

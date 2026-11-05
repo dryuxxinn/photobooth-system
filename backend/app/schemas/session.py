@@ -32,6 +32,7 @@ class StartSessionRequest(BaseModel):
     photos_required: Optional[int] = Field(default=6, ge=1, le=10)
     template_id: Optional[str] = "classic_strip_3"
     frame_color: Optional[str] = "cream"
+    filter_name: Optional[str] = "original"
 
 
 class CapturePhotoRequest(BaseModel):
@@ -43,8 +44,27 @@ class ProcessImageRequest(BaseModel):
     template_id: Optional[str] = None
     filter_name: Optional[str] = None
     frame_color: Optional[str] = None
+    sticker_id: Optional[str] = None
     custom_text: Optional[str] = None
     selected_photo_ids: Optional[List[str]] = None
+
+
+class CustomOverlayUploadRequest(BaseModel):
+    image_data: str
+
+
+class QrisCreateRequest(BaseModel):
+    amount: int = Field(default=35000, ge=1000)
+    package_name: Optional[str] = "Sweet Studio Regular Session"
+
+
+class VoucherVerifyRequest(BaseModel):
+    code: str
+    valid_codes: Optional[List[str]] = None
+
+
+class CloudSyncRequest(BaseModel):
+    public_base_url: Optional[str] = None
 
 
 class PrintRequest(BaseModel):
@@ -63,8 +83,12 @@ class SessionDetailResponse(BaseModel):
     template_id: Optional[str] = None
     filter_name: Optional[str] = "original"
     frame_color: Optional[str] = "cream"
+    sticker_id: Optional[str] = "sweet_bows"
     processed_image_path: Optional[str] = None
     processed_image_url: Optional[str] = None
+    gif_path: Optional[str] = None
+    gif_url: Optional[str] = None
+    cloud_share_url: Optional[str] = None
     started_at: str
     completed_at: Optional[str] = None
     error_message: Optional[str] = None

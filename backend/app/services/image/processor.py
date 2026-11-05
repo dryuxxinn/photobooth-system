@@ -1,8 +1,12 @@
+import base64
+import io
 import math
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
-from PIL import Image, ImageDraw, ImageOps, ImageEnhance
+from PIL import Image, ImageDraw, ImageOps, ImageEnhance, ImageFilter
+
+from backend.app.core.config import settings
 
 
 class ImageProcessor:
@@ -229,6 +233,14 @@ class ImageProcessor:
         },
     ]
 
+    STICKER_OPTIONS: List[Dict[str, str]] = [
+        {"id": "sweet_bows", "name": "Mix Pita & Bunga 🎀", "desc": "Kombinasi pita, hati, bunga & bintang"},
+        {"id": "hearts_only", "name": "Lovely Hearts ♡", "desc": "Stiker hati manis di setiap sudut foto"},
+        {"id": "flowers_only", "name": "Cherry Blossom ✿", "desc": "Stiker bunga pastel di setiap sudut foto"},
+        {"id": "sparkles_only", "name": "Y2K Sparkles ✨", "desc": "Bintang kilau berkilauan"},
+        {"id": "none", "name": "Tanpa Stiker (Clean)", "desc": "Bingkai bersih minimalis tanpa stiker sudut"},
+    ]
+
     @classmethod
     def get_theme(cls, frame_color: Optional[str] = None) -> Dict[str, Any]:
         key = (frame_color or "cream").lower()
@@ -242,26 +254,124 @@ class ImageProcessor:
                 return tpl
         return None
 
+    @classmethod
+    def get_custom_overlay_path(cls, template_id: str) -> Path:
+        overlay_dir = settings.TEMPLATES_DIR / "layouts"
+        overlay_dir.mkdir(parents=True, exist_ok=True)
+        return overlay_dir / f"{template_id}.png"
+
+    @classmethod
+    def get_templates_with_overlay_status(cls) -> List[Dict[str, Any]]:
+        enriched: List[Dict[str, Any]] = []
+        for tpl in cls.AVAILABLE_TEMPLATES:
+            item = dict(tpl)
+            ov_path = cls.get_custom_overlay_path(tpl["id"])
+            has_ov = ov_path.exists()
+            item["has_custom_overlay"] = has_ov
+            item["custom_overlay_url"] = (
+                f"/template-assets/layouts/{tpl['id']}.png" if has_ov else None
+            )
+            enriched.append(item)
+        return enriched
+
+    @classmethod
+    def save_custom_overlay(cls, template_id: str, b64_image_data: str) -> Path:
+        raw_b64 = b64_image_data.strip()
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        raw_bytes = base64.b64decode(raw_b64)
+        target_path = cls.get_custom_overlay_path(template_id)
+        with Image.open(io.BytesIO(raw_bytes)) as uploaded:
+            rgba = uploaded.convert("RGBA")
+            rgba.save(target_path, "PNG")
+        return target_path
+
+    @classmethod
+    def delete_custom_overlay(cls, template_id: str) -> bool:
+        target_path = cls.get_custom_overlay_path(template_id)
+        if target_path.exists():
+            target_path.unlink()
+            return True
+        return False
+
+    @classmethod
+    def _apply_custom_png_overlay(
+        cls, canvas: Image.Image, template_id: Optional[str]
+    ) -> Image.Image:
+        if not template_id:
+            return canvas
+        ov_path = cls.get_custom_overlay_path(template_id)
+        if not ov_path.exists():
+            return canvas
+        try:
+            with Image.open(ov_path) as ov:
+                ov_rgba = ov.convert("RGBA").resize(
+                    canvas.size, Image.Resampling.LANCZOS
+                )
+                base_rgba = canvas.convert("RGBA")
+                composited = Image.alpha_composite(base_rgba, ov_rgba)
+                return composited.convert("RGB")
+        except Exception:
+            return canvas
+
     @staticmethod
     def apply_filter(img: Image.Image, filter_name: str = "original") -> Image.Image:
         """Apply optional color filter preset to a PIL image."""
         mode = (filter_name or "original").lower()
+        rgb = img.convert("RGB")
         if mode in ("bw", "mono"):
-            return ImageOps.grayscale(img).convert("RGB")
+            return ImageOps.grayscale(rgb).convert("RGB")
         elif mode == "warm":
-            enhancer = ImageEnhance.Color(img)
+            enhancer = ImageEnhance.Color(rgb)
             warmed = enhancer.enhance(1.25)
             r, g, b = warmed.split()
             r = r.point(lambda i: min(255, int(i * 1.07)))
             b = b.point(lambda i: int(i * 0.93))
             return Image.merge("RGB", (r, g, b))
         elif mode == "contrast":
-            return ImageEnhance.Contrast(img).enhance(1.3)
+            return ImageEnhance.Contrast(rgb).enhance(1.3)
         elif mode == "vintage":
-            gray = ImageOps.grayscale(img)
+            gray = ImageOps.grayscale(rgb)
             sepia = ImageOps.colorize(gray, "#2B1D0E", "#F7E7CE")
-            return Image.blend(img.convert("RGB"), sepia, 0.55)
-        return img
+            return Image.blend(rgb, sepia, 0.55)
+        elif mode == "beauty":
+            # Soft skin smoothing + gentle rosy brightness boost (Korean Beauty Cam style)
+            smoothed = rgb.filter(ImageFilter.SMOOTH_MORE)
+            blended = Image.blend(rgb, smoothed, 0.42)
+            bright = ImageEnhance.Brightness(blended).enhance(1.08)
+            r, g, b = bright.split()
+            r = r.point(lambda i: min(255, int(i * 1.05)))
+            b = b.point(lambda i: min(255, int(i * 1.02)))
+            return Image.merge("RGB", (r, g, b))
+        elif mode == "cool":
+            # Cool dreamy pastel tone
+            cooled = ImageEnhance.Color(rgb).enhance(1.12)
+            r, g, b = cooled.split()
+            r = r.point(lambda i: int(i * 0.95))
+            b = b.point(lambda i: min(255, int(i * 1.09)))
+            return Image.merge("RGB", (r, g, b))
+        elif mode == "y2k":
+            # Y2K cyber-pop glow (soft bloom + high saturation + magenta/cyan shift)
+            bloom = rgb.filter(ImageFilter.GaussianBlur(radius=3))
+            glow = Image.blend(rgb, bloom, 0.25)
+            pop = ImageEnhance.Color(glow).enhance(1.35)
+            return ImageEnhance.Contrast(pop).enhance(1.12)
+        elif mode == "rosy":
+            # Sweet Korean Rosy / Pastel Blush
+            bright = ImageEnhance.Brightness(rgb).enhance(1.06)
+            pop = ImageEnhance.Color(bright).enhance(1.22)
+            r, g, b = pop.split()
+            r = r.point(lambda i: min(255, int(i * 1.08)))
+            b = b.point(lambda i: min(255, int(i * 1.03)))
+            return Image.merge("RGB", (r, g, b))
+        elif mode == "moody":
+            # Moody warm latte & film contrast
+            gray = ImageOps.grayscale(rgb)
+            sepia = ImageOps.colorize(gray, "#2D241E", "#F8EBD9")
+            blended = Image.blend(rgb, sepia, 0.32)
+            contrast = ImageEnhance.Contrast(blended).enhance(1.18)
+            return ImageEnhance.Brightness(contrast).enhance(0.96)
+        return rgb
 
     @staticmethod
     def create_thumbnail(
@@ -473,6 +583,7 @@ class ImageProcessor:
         h: int,
         idx: int,
         theme: Dict[str, Any],
+        sticker_id: str = "sweet_bows",
     ) -> None:
         """Draw a clean photo border and a cute corner sticker badge on a photo slot."""
         accent = theme.get("accent", (229, 115, 138))
@@ -481,6 +592,10 @@ class ImageProcessor:
         # Crisp photo slot outline
         draw.rectangle([x, y, x + w, y + h], outline=sticker_bg, width=6)
         draw.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], outline=accent, width=2)
+
+        mode = (sticker_id or "sweet_bows").lower()
+        if mode in ("none", "minimal_none", "off"):
+            return
 
         # Alternating corner sticker position (top-left on even, top-right on odd)
         sx = x + 22 if idx % 2 == 0 else x + w - 22
@@ -492,6 +607,16 @@ class ImageProcessor:
             outline=accent,
             width=2,
         )
+        if mode == "hearts_only":
+            cls._draw_heart(draw, sx, sy, 10, accent)
+            return
+        if mode == "flowers_only":
+            cls._draw_flower(draw, sx, sy, 11, accent)
+            return
+        if mode == "sparkles_only":
+            cls._draw_sparkle(draw, sx, sy, 11, accent)
+            return
+
         kind = idx % 4
         if kind == 0:
             cls._draw_heart(draw, sx, sy, 10, accent)
@@ -503,6 +628,81 @@ class ImageProcessor:
             cls._draw_sparkle(draw, sx, sy, 11, accent)
 
     @classmethod
+    def compose_gif(
+        cls,
+        photo_paths: List[Path],
+        output_path: Path,
+        filter_name: str = "original",
+        frame_color: str = "cream",
+        customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
+        boomerang: bool = True,
+    ) -> Path:
+        """
+        Generate an animated LumaBooth-style Boomerang GIF from the session's captured photos.
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        valid_paths = [p for p in photo_paths if p.exists()]
+        if not valid_paths:
+            raise ValueError("No valid photo paths provided for GIF generation.")
+
+        theme = cls.get_theme(frame_color)
+        accent = theme.get("accent", (229, 115, 138))
+        sticker_bg = theme.get("sticker_bg", (255, 249, 242))
+
+        slot_w, slot_h = 640, 426
+        pad = 24
+        footer_h = 74
+        total_w = slot_w + pad * 2
+        total_h = slot_h + pad * 2 + footer_h
+
+        frames: List[Image.Image] = []
+        for idx, path in enumerate(valid_paths):
+            card = Image.new("RGB", (total_w, total_h), color=theme["bg"])
+            draw = ImageDraw.Draw(card)
+            cls._draw_dashed_border(
+                draw, 8, 8, total_w - 8, total_h - 8, color=accent, width=2, dash=12, gap=8
+            )
+            with Image.open(path) as src:
+                fitted = ImageOps.fit(src, (slot_w, slot_h), Image.Resampling.LANCZOS)
+                fitted = cls.apply_filter(fitted, filter_name)
+                card.paste(fitted, (pad, pad))
+
+            cls._draw_slot_frame_and_sticker(
+                draw, pad, pad, slot_w, slot_h, idx, theme, sticker_id=sticker_id
+            )
+
+            # Footer caption & pose counter pill
+            fy = pad + slot_h + 16
+            title = (customer_name.strip() if customer_name else "SWEET STUDIO")[:22]
+            date_str = datetime.now().strftime("%d.%m.%Y")
+            draw.text((pad + 10, fy + 6), f"✦ {title} ✦", fill=theme["text"])
+            draw.text(
+                (pad + 10, fy + 30),
+                f"SWEET BOOMERANG  •  POSE {idx + 1}/{len(valid_paths)}  •  {date_str}",
+                fill=theme["subtext"],
+            )
+            cls._draw_heart(draw, total_w - pad - 24, fy + 24, 10, accent)
+            cls._draw_flower(draw, total_w - pad - 54, fy + 24, 10, accent)
+            frames.append(card)
+
+        if boomerang and len(frames) > 2:
+            sequence = frames + frames[-2:0:-1]
+        else:
+            sequence = frames
+
+        sequence[0].save(
+            output_path,
+            format="GIF",
+            save_all=True,
+            append_images=sequence[1:],
+            duration=380,
+            loop=0,
+            optimize=True,
+        )
+        return output_path
+
+    @classmethod
     def compose_photostrip(
         cls,
         photo_paths: List[Path],
@@ -512,10 +712,11 @@ class ImageProcessor:
         filter_name: str = "original",
         frame_color: str = "cream",
         customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
     ) -> Path:
         """
         Assemble captured photos according to the selected template_id, filter_name,
-        and frame_color theme.
+        frame_color theme, sticker_id, and optional custom PNG overlay.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -529,29 +730,30 @@ class ImageProcessor:
         theme = cls.get_theme(frame_color)
 
         if template_id == "grid_2x2_4" and len(valid_paths) >= 4:
-            return cls._compose_grid_2x2(
-                valid_paths[:4], output_path, branding_text, filter_name, theme, customer_name
+            res_path = cls._compose_grid_2x2(
+                valid_paths[:4], output_path, branding_text, filter_name, theme, customer_name, sticker_id
             )
         elif template_id == "cinema_ticket_4":
-            return cls._compose_cinema_ticket(
+            res_path = cls._compose_cinema_ticket(
                 valid_paths, output_path, branding_text, filter_name, theme, customer_name
             )
         elif template_id == "engagement_event_3":
-            return cls._compose_event_gold_strip(
+            res_path = cls._compose_event_gold_strip(
                 valid_paths, output_path, branding_text, filter_name, theme, customer_name
             )
         elif template_id == "landscape_trio_3":
-            return cls._compose_landscape_trio(
-                valid_paths, output_path, branding_text, filter_name, theme, customer_name
+            res_path = cls._compose_landscape_trio(
+                valid_paths, output_path, branding_text, filter_name, theme, customer_name, sticker_id
             )
         elif template_id == "wide_recap_1":
-            return cls._compose_wide_recap(
-                valid_paths[0], output_path, branding_text, filter_name, theme, customer_name
+            res_path = cls._compose_wide_recap(
+                valid_paths[0], output_path, branding_text, filter_name, theme, customer_name, sticker_id
             )
         elif template_id in ("ourbooth_twin_3", "twin_strip_4"):
             single_strip = cls._build_ourbooth_vertical_strip(
-                valid_paths, branding_text, filter_name, theme, customer_name
+                valid_paths, branding_text, filter_name, theme, customer_name, sticker_id=sticker_id
             )
+            single_strip = cls._apply_custom_png_overlay(single_strip, template_id)
             sw, sh = single_strip.size
             twin = Image.new("RGB", (sw * 2 + 20, sh), color=theme["bg"])
             twin.paste(single_strip, (0, 0))
@@ -562,17 +764,26 @@ class ImageProcessor:
                 draw.line([(mid_x, y), (mid_x, y + 8)], fill=theme["subtext"], width=2)
             twin.save(output_path, "JPEG", quality=92)
             return output_path
+        else:
+            strip_img = cls._build_ourbooth_vertical_strip(
+                valid_paths,
+                branding_text,
+                filter_name,
+                theme,
+                customer_name,
+                is_polaroid=(template_id == "single_frame_1"),
+                sticker_id=sticker_id,
+            )
+            strip_img = cls._apply_custom_png_overlay(strip_img, template_id)
+            strip_img.save(output_path, "JPEG", quality=92)
+            return output_path
 
-        strip_img = cls._build_ourbooth_vertical_strip(
-            valid_paths,
-            branding_text,
-            filter_name,
-            theme,
-            customer_name,
-            is_polaroid=(template_id == "single_frame_1"),
-        )
-        strip_img.save(output_path, "JPEG", quality=92)
-        return output_path
+        # Apply optional custom PNG overlay for non-strip templates if uploaded
+        if cls.get_custom_overlay_path(template_id).exists():
+            with Image.open(res_path) as comp:
+                with_ov = cls._apply_custom_png_overlay(comp.copy(), template_id)
+                with_ov.save(res_path, "JPEG", quality=92)
+        return res_path
 
     @classmethod
     def _build_ourbooth_vertical_strip(
@@ -583,6 +794,7 @@ class ImageProcessor:
         theme: Dict[str, Any],
         customer_name: Optional[str] = None,
         is_polaroid: bool = False,
+        sticker_id: str = "sweet_bows",
     ) -> Image.Image:
         slot_width = 800
         slot_height = 533  # 3:2 aspect ratio
@@ -621,7 +833,7 @@ class ImageProcessor:
                 fitted = cls.apply_filter(fitted, filter_name)
                 canvas.paste(fitted, (margin, current_y))
                 cls._draw_slot_frame_and_sticker(
-                    draw, margin, current_y, slot_width, slot_height, idx, theme
+                    draw, margin, current_y, slot_width, slot_height, idx, theme, sticker_id=sticker_id
                 )
                 current_y += slot_height + margin
 
@@ -897,6 +1109,7 @@ class ImageProcessor:
         filter_name: str,
         theme: Dict[str, Any],
         customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
     ) -> Path:
         """3 side-by-side vertical slots on a decorated Sweet Studio landscape card."""
         slot_w = 480
@@ -922,7 +1135,7 @@ class ImageProcessor:
                 fitted = cls.apply_filter(fitted, filter_name)
                 canvas.paste(fitted, (curr_x, margin))
                 cls._draw_slot_frame_and_sticker(
-                    draw, curr_x, margin, slot_w, slot_h, idx, theme
+                    draw, curr_x, margin, slot_w, slot_h, idx, theme, sticker_id=sticker_id
                 )
                 curr_x += slot_w + margin
 
@@ -950,6 +1163,7 @@ class ImageProcessor:
         filter_name: str,
         theme: Dict[str, Any],
         customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
     ) -> Path:
         """Single wide landscape photo on a decorated 16:9 postcard."""
         total_w, total_h = 1600, 1000
@@ -967,7 +1181,7 @@ class ImageProcessor:
             fitted = cls.apply_filter(fitted, filter_name)
             canvas.paste(fitted, (margin, margin))
             cls._draw_slot_frame_and_sticker(
-                draw, margin, margin, slot_w, slot_h, 0, theme
+                draw, margin, margin, slot_w, slot_h, 0, theme, sticker_id=sticker_id
             )
 
         title = customer_name.strip() if customer_name else branding_text
@@ -989,6 +1203,7 @@ class ImageProcessor:
         filter_name: str,
         theme: Dict[str, Any],
         customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
     ) -> Path:
         slot_width = 600
         slot_height = 400
@@ -1019,7 +1234,7 @@ class ImageProcessor:
                 px, py = positions[idx]
                 canvas.paste(fitted, (px, py))
                 cls._draw_slot_frame_and_sticker(
-                    draw, px, py, slot_width, slot_height, idx, theme
+                    draw, px, py, slot_width, slot_height, idx, theme, sticker_id=sticker_id
                 )
 
         # Center scrapbook flower emblem where the 4 photos meet

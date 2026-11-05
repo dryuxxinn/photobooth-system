@@ -117,6 +117,7 @@ class SessionManager:
         photos_required: int = 6,
         template_id: str = "classic_strip_3",
         frame_color: Optional[str] = None,
+        filter_name: Optional[str] = "original",
     ) -> Dict[str, Any]:
         if self.state != SessionState.IDLE:
             raise SessionTransitionError(
@@ -144,10 +145,14 @@ class SessionManager:
             "photos": [],
             "selected_photo_ids": [],
             "template_id": template_id,
-            "filter_name": "original",
+            "filter_name": filter_name or "original",
             "frame_color": frame_color,
+            "sticker_id": "sweet_bows",
             "processed_image_path": None,
             "processed_image_url": None,
+            "gif_path": None,
+            "gif_url": None,
+            "cloud_share_url": f"/share/{session_id}",
             "started_at": now,
             "completed_at": None,
             "error_message": None,
@@ -303,6 +308,16 @@ class SessionManager:
             session["processed_image_path"] = None
             session["processed_image_url"] = None
 
+        if session.get("gif_path"):
+            gif_p = Path(session["gif_path"])
+            if gif_p.exists():
+                try:
+                    gif_p.unlink()
+                except Exception:
+                    pass
+            session["gif_path"] = None
+            session["gif_url"] = None
+
         if self.state != SessionState.CAPTURING:
             self._transition_to(SessionState.CAPTURING)
 
@@ -322,6 +337,7 @@ class SessionManager:
         template_id: Optional[str] = None,
         filter_name: Optional[str] = None,
         frame_color: Optional[str] = None,
+        sticker_id: Optional[str] = None,
         custom_text: Optional[str] = None,
         selected_photo_ids: Optional[List[str]] = None,
     ) -> str:
@@ -335,6 +351,8 @@ class SessionManager:
             session["filter_name"] = filter_name
         if frame_color:
             session["frame_color"] = frame_color
+        if sticker_id:
+            session["sticker_id"] = sticker_id
         if custom_text is not None:
             session["customer_name"] = custom_text
         if selected_photo_ids is not None:
@@ -355,6 +373,8 @@ class SessionManager:
 
         output_filename = f"processed_{session['session_id']}.jpg"
         output_path = settings.PROCESSED_DIR / output_filename
+        gif_filename = f"gif_{session['session_id']}.gif"
+        gif_output_path = settings.PROCESSED_DIR / gif_filename
 
         try:
             ImageProcessor.compose_photostrip(
@@ -364,9 +384,29 @@ class SessionManager:
                 filter_name=session.get("filter_name") or "original",
                 frame_color=session.get("frame_color") or "cream",
                 customer_name=session.get("customer_name"),
+                sticker_id=session.get("sticker_id") or "sweet_bows",
             )
             session["processed_image_path"] = str(output_path)
             session["processed_image_url"] = f"/storage/processed/{output_filename}"
+
+            # Also generate animated Boomerang GIF from all session photos (or selected photos)
+            all_session_paths = [Path(p["original_path"]) for p in session["photos"]]
+            gif_source_paths = all_session_paths if len(all_session_paths) >= 2 else photo_paths
+            try:
+                ImageProcessor.compose_gif(
+                    gif_source_paths,
+                    gif_output_path,
+                    filter_name=session.get("filter_name") or "original",
+                    frame_color=session.get("frame_color") or "cream",
+                    customer_name=session.get("customer_name"),
+                    sticker_id=session.get("sticker_id") or "sweet_bows",
+                    boomerang=True,
+                )
+                session["gif_path"] = str(gif_output_path)
+                session["gif_url"] = f"/storage/processed/{gif_filename}"
+            except Exception:
+                pass
+
             self._transition_to(SessionState.PREVIEW)
             return str(output_path)
         except Exception as e:
