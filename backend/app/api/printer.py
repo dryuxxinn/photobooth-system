@@ -93,6 +93,7 @@ def process_session_image(payload: ProcessImageRequest = ProcessImageRequest()):
             filter_name=payload.filter_name,
             frame_color=payload.frame_color,
             sticker_id=payload.sticker_id,
+            ar_preset_id=payload.ar_preset_id,
             custom_text=payload.custom_text,
             selected_photo_ids=payload.selected_photo_ids,
         )
@@ -107,11 +108,16 @@ def process_session_image(payload: ProcessImageRequest = ProcessImageRequest()):
 
 @router.get("/templates")
 def get_available_templates():
-    """Return available photostrip/grid templates, frame color themes, and sticker options for the Kiosk UI."""
+    """Return available photostrip/grid templates, frame color themes, sticker options, and AR presets for the Kiosk UI."""
+    from backend.app.services.ar import get_sticker_engine
     return {
         "templates": ImageProcessor.get_templates_with_overlay_status(),
         "frame_themes": list(ImageProcessor.FRAME_THEMES.values()),
         "sticker_options": ImageProcessor.STICKER_OPTIONS,
+        "ar_presets": [
+            p.model_dump() if hasattr(p, "model_dump") else p.dict()
+            for p in get_sticker_engine().get_presets()
+        ],
     }
 
 

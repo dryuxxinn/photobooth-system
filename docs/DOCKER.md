@@ -29,14 +29,14 @@ flowchart LR
 
 | Service | Nama Kontainer | Image Base | Port Host | Peran |
 | :--- | :--- | :--- | :--- | :--- |
-| **`backend`** | `dryu-booth-backend` | `python:3.12-slim` | `8000:8000` | Menjalankan FastAPI, SessionManager, SQLite, Pillow ImageProcessor, `gphoto2`, dan `cups-client`. |
-| **`frontend`** | `dryu-booth-frontend` | `node:20-alpine` | `3000:3000` | Menjalankan UI Kiosk layar sentuh berbasis Next.js (mode *standalone*). |
+| **`backend`** | `dryu-booth-backend` | `python:3.12-slim` | `8000:8000` | Menjalankan FastAPI, SessionManager, SQLite, Pillow ImageProcessor (Strip + Boomerang GIF + PNG Overlay), `WifiCamera` (Sony HTTP JSON-RPC :10000 & PTP/IP), `gphoto2`, dan `cups-client`. |
+| **`frontend`** | `dryu-booth-frontend` | `node:20-alpine` | `3000:3000` | Menjalankan UI Kiosk layar sentuh (`/`), Admin Dashboard (`/admin`), dan Galeri Digital Tamu (`/share/[sessionId]`) berbasis Next.js 14 (*standalone*). |
 
 ---
 
-## 2. Cara Menjalankan (Mode Simulasi / Development)
+## 2. Cara Menjalankan (Mode Default / Wi-Fi Sony a6400 / Simulasi)
 
-Mode ini berjalan di **Windows, macOS, maupun Linux** tanpa memerlukan kamera Canon EOS 700D fisik atau printer fisik (`CAMERA_DRIVER=simulation`, `PRINTER_DRIVER=simulation`).
+Secara default di [`docker-compose.yml`](file:///c:/Users/ASUS%20TUF%20F15/dryu-booth/docker-compose.yml), kontainer backend dikonfigurasi dengan `CAMERA_DRIVER=wifi` (`Sony Alpha a6400 (Wi-Fi)` pada `192.168.122.1:10000`) dengan *auto-fallback* ke mode simulasi apabila kamera fisik belum terhubung ke Wi-Fi.
 
 ### 2.1 Build dan Jalankan Kontainer
 Dari direktori utama proyek (`dryu-booth/`), jalankan:
@@ -53,6 +53,8 @@ Pastikan `dryu-booth-backend` berstatus `Up (healthy)` dan `dryu-booth-frontend`
 
 ### 2.3 Akses Aplikasi
 - **UI Kiosk (Layar Utama / iPad):** Buka `http://localhost:3000` (atau `http://<IP_LAN_SERVER>:3000` dari Safari di iPad).
+- **Dashboard Admin / Operator:** Buka `http://localhost:3000/admin`.
+- **Galeri Unduh Tamu (QR Code):** Buka `http://localhost:3000/share/<session_id>`.
 - **Backend Swagger API Docs:** Buka `http://localhost:8000/docs`.
 - **Healthcheck Endpoint:** Buka `http://localhost:8000/health`.
 
@@ -106,3 +108,14 @@ Docker Compose memetakan (*bind mount*) folder lokal ke dalam kontainer agar sel
 | Me-restart servis | `docker compose restart` |
 | Menghentikan semua kontainer | `docker compose down` |
 | Rebuild setelah mengubah kode | `docker compose up -d --build` |
+
+---
+
+## 7. Catatan Perubahan Signifikan Kontainerisasi
+
+| Versi / Pembaruan | Komponen | Perubahan & Alasan Teknis |
+| :--- | :--- | :--- |
+| **Wi-Fi Camera Default** | `docker-compose.yml` | Variabel `CAMERA_DRIVER=wifi`, `CAMERA_WIFI_IP=192.168.122.1`, `CAMERA_WIFI_PORT=10000`, dan `CAMERA_WIFI_PROTOCOL=sony_http` dikonfigurasi sebagai nilai default kontainer backend. |
+| **Liveview MJPEG Streaming** | `backend/Dockerfile` | Penambahan buffer IO untuk mendukung stream MJPEG (`/camera/stream`) dan frame polling instan (`/camera/preview-frame`). |
+| **Mount Template Overlays** | Bind Mount `./templates` | Memastikan file custom PNG overlay yang diunggah melalui Admin Dashboard (`templates/assets/overlays/`) tetap persisten di host saat kontainer di-rebuild. |
+| **Next.js Standalone Build** | `frontend/Dockerfile` | Menggunakan output `standalone` pada Next.js 14 untuk mengurangi ukuran image runner dan mempercepat proses deployment kiosk. |

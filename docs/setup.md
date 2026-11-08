@@ -172,13 +172,14 @@ npm run dev
 
 ## 5. Mode Kamera & Cara Pengujian
 
-Sistem mendukung 3 mode kamera sesuai kebutuhan:
+Sistem mendukung 4 mode kamera sesuai kebutuhan operasional:
 
 | Mode Kamera | Konfigurasi | Deskripsi Penggunaan |
 | :--- | :--- | :--- |
-| **Webcam Laptop / Kamera iPad** | Otomatis via browser Kiosk | Menggunakan API `navigator.mediaDevices.getUserMedia`. Menampilkan live feed di layar dan menangkap gambar 1800×1200 rasio 3:2 saat hitung mundur `0`. Cocok untuk testing langsung di laptop atau iPad. |
-| **Simulasi Backend** | `CAMERA_DRIVER=simulation` | Menghasilkan foto siluet potret studio pastel resolusi tinggi secara otomatis via Pillow tanpa memerlukan perangkat kamera fisik apa pun. |
-| **DSLR Canon EOS 700D** | `CAMERA_DRIVER=gphoto` | Mengontrol kamera Canon asli via USB tethering menggunakan `libgphoto2`. Memotret otomatis, men-download JPEG asli, dan membuat thumbnail. |
+| **Wi-Fi Nirkabel Sony Alpha a6400** | `CAMERA_DRIVER=wifi` (`192.168.122.1:10000`) | Menghubungkan kamera mirrorless Sony a6400 tanpa kabel USB melalui fitur *Ctrl w/ Smartphone* (Sony Camera Remote JSON-RPC API di port `10000` & stream *liveview* 25 FPS di port `60152`). |
+| **Webcam Laptop / Capture Card / Kamera iPad** | Mode `webcam` via layar persiapan Kiosk | Menggunakan API `navigator.mediaDevices.getUserMedia`. Mendukung webcam bawaan, **HDMI-to-USB Capture Card** (`USB Video`), maupun **EOS Webcam Utility**. |
+| **DSLR Kabel USB (`gphoto2`)** | `CAMERA_DRIVER=gphoto` | Mengontrol kamera DSLR/Mirrorless via USB tethering di Linux menggunakan `libgphoto2`. |
+| **Simulasi Backend** | `CAMERA_DRIVER=simulation` | Menghasilkan foto siluet potret studio pastel resolusi tinggi (`1800x1200`) secara otomatis via Pillow tanpa memerlukan perangkat kamera fisik. |
 
 ### Mengaktifkan Kamera Canon DSLR & Printer Fisik di Linux / Mini PC
 Gunakan konfigurasi override USB pada mesin Linux:
@@ -197,7 +198,7 @@ docker exec -it dryu-booth-backend gphoto2 --auto-detect
 Pastikan semua unit test, integration test, dan end-to-end simulation test berjalan hijau:
 
 ```bash
-# Menjalankan seluruh test suite (22 tests)
+# Menjalankan seluruh test suite (28 tests)
 python -m pytest -v
 
 # Atau di dalam kontainer Docker
@@ -207,8 +208,8 @@ docker compose run --rm backend pytest -v
 Hasil uji mencakup:
 - Pengujian siklus sesi (State Machine: `IDLE` -> `STARTED` -> `CAPTURING` -> `PROCESSING` -> `PREVIEW` -> `PRINTING` -> `COMPLETED`).
 - Pengujian isolasi pencegahan sesi ganda (*concurrent conflict*).
-- Pengujian komposisi 11 template bingkai Sweet Studio (OurBooth, Retro Strip, Polaroid, Cinema Ticket, 2x2 Grid Scrapbook, Event Gold).
-- Pengujian pengunggahan foto dari webcam browser via API.
+- Pengujian komposisi 11 template bingkai Sweet Studio, 8 filter foto, 5 paket stiker, Custom PNG Overlay, serta pembuatan Animasi Boomerang GIF (`compose_gif`).
+- Pengujian driver `WifiCamera` (Sony HTTP JSON-RPC & runtime switching `POST /camera/config`), pembayaran QRIS & voucher, serta webcam capture via API.
 
 ---
 
@@ -219,8 +220,11 @@ Hasil uji mencakup:
 | `SERVER_HOST` | `0.0.0.0` | Host bind server FastAPI |
 | `SERVER_PORT` | `8000` | Port backend |
 | `DEBUG` | `True` | Mode debug FastAPI |
-| `CAMERA_DRIVER` | `simulation` | Driver kamera (`simulation` atau `gphoto`) |
-| `CAMERA_MODEL` | `Canon EOS 700D` | Nama model kamera |
+| `CAMERA_DRIVER` | `wifi` | Driver kamera (`simulation`, `gphoto`, atau `wifi`) |
+| `CAMERA_MODEL` | `Sony Alpha a6400 (Wi-Fi)` | Nama model kamera |
+| `CAMERA_WIFI_IP` | `192.168.122.1` | Alamat IP Wi-Fi kamera (default Sony Wi-Fi Direct) |
+| `CAMERA_WIFI_PORT` | `10000` | Port HTTP JSON-RPC kamera Sony (`10000` untuk a6400, `8080` untuk seri lama) |
+| `CAMERA_WIFI_PROTOCOL` | `sony_http` | Protokol kamera nirkabel (`sony_http` atau `ptpip`) |
 | `PRINTER_DRIVER` | `simulation` | Driver printer (`simulation` atau `cups`) |
 | `PRINTER_NAME` | `Photo_Printer_Default` | Nama antrean printer CUPS |
 | `STORAGE_BASE_DIR`| `./storage` | Folder penyimpanan hasil foto |
@@ -228,3 +232,13 @@ Hasil uji mencakup:
 | `PHOTOS_PER_SESSION` | `3` | Jumlah foto default per sesi |
 | `COUNTDOWN_SECONDS` | `5` | Durasi hitung mundur default |
 | `CORS_ORIGINS` | `*` | Domain yang diizinkan mengakses API |
+
+---
+
+## 8. Catatan Perubahan Signifikan Konfigurasi & Setup
+
+| Tanggal / Versi | Area | Perubahan |
+| :--- | :--- | :--- |
+| **v0.2.0** | Variabel Lingkungan | Penambahan variabel Wi-Fi camera: `CAMERA_WIFI_IP`, `CAMERA_WIFI_PORT` (default `10000` untuk a6400), dan `CAMERA_WIFI_PROTOCOL` (`sony_http`). |
+| **v0.2.0** | Struktur Folder | Pemindahan seluruh file dokumentasi `.md` ke folder `docs/` (kecuali `README.md` dan `system-doc.md` di root) agar repositori rapi dan terstandar. |
+| **v0.2.0** | Test Suite | Penambahan pengujian unit dan integrasi untuk Wi-Fi camera RPC, runtime configuration switcher, Boomerang GIF generator, dan payment gate sehingga total pengujian bertambah menjadi 28 tests passing. |

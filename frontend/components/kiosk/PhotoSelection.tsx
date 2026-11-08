@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { SessionDetail, TemplateOption } from "@/types/photobooth";
 import { SELECTION_IDLE_SECONDS } from "@/lib/config";
+import { getFilterCss } from "@/lib/defaults";
 import { useIdleCountdown } from "@/hooks/useIdleCountdown";
 import { resolveStorageUrl } from "@/services/api";
 import { Button } from "@/components/ui/Button";
@@ -125,6 +126,7 @@ export function PhotoSelection({
                   <img
                     src={src}
                     alt={`Foto pose ke-${photo.index}`}
+                    style={{ filter: getFilterCss(session.filter_name || undefined) }}
                     className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
                   />
                 )}

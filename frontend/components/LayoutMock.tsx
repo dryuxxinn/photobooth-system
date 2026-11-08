@@ -3,6 +3,7 @@
 import React, { useId } from "react";
 import { FrameThemeOption, PhotoItem, TemplateOption } from "@/types/photobooth";
 import { getThemeHex, inkFor, isDarkHex, subInkFor } from "@/lib/color";
+import { getFilterCss } from "@/lib/defaults";
 import { getMockSpec } from "@/lib/layouts";
 import { resolveStorageUrl } from "@/services/api";
 
@@ -12,6 +13,9 @@ interface LayoutMockProps {
   frameThemes?: FrameThemeOption[];
   photos?: PhotoItem[];
   captionText?: string;
+  filterId?: string;
+  stickerId?: string;
+  arPresetId?: string;
   className?: string;
 }
 
@@ -171,6 +175,9 @@ export function LayoutMock({
   frameThemes,
   photos = [],
   captionText,
+  filterId = "original",
+  stickerId = "sweet_bows",
+  arPresetId = "none",
   className = "",
 }: LayoutMockProps) {
   const rawId = useId().replace(/:/g, "");
@@ -181,6 +188,7 @@ export function LayoutMock({
   const accent = accentForTheme(frameColorId, bgHex);
   const stickerBg = isDarkHex(bgHex) ? "#282C36" : "#FFF9F2";
   const title = (captionText?.trim() || "SWEET STUDIO").toUpperCase();
+  const slotFilterCss = getFilterCss(filterId);
 
   return (
     <svg
@@ -344,7 +352,16 @@ export function LayoutMock({
         const clipId = `slotClip-${rawId}-${idx}`;
         const stickerX = idx % 2 === 0 ? slot.x + 36 : slot.x + slot.w - 36;
         const stickerY = slot.y + 36;
-        const stickerKind = idx % 4;
+        const stickerKind =
+          stickerId === "hearts_only"
+            ? 0
+            : stickerId === "flowers_only"
+            ? 1
+            : stickerId === "sparkles_only"
+            ? 3
+            : idx % 4;
+        const showCornerSticker =
+          spec.kind !== "ticket" && stickerId !== "none";
 
         return (
           <g key={idx}>
@@ -374,6 +391,11 @@ export function LayoutMock({
                   width={slot.w}
                   height={slot.h}
                   preserveAspectRatio="xMidYMid slice"
+                  style={
+                    slotFilterCss && slotFilterCss !== "none"
+                      ? { filter: slotFilterCss }
+                      : undefined
+                  }
                 />
               ) : (
                 <g>
@@ -405,6 +427,156 @@ export function LayoutMock({
                   </text>
                 </g>
               )}
+
+              {/* Live AR Preset Overlay Indicator inside Photo Slot (keeps vibrant color) */}
+              {arPresetId && arPresetId !== "none" && (
+                <g>
+                  {arPresetId === "pink_bunny_sweet" && (
+                    <>
+                      <ellipse
+                        cx={slot.x + slot.w * 0.43}
+                        cy={slot.y + slot.h * 0.17}
+                        rx={slot.w * 0.04}
+                        ry={slot.h * 0.11}
+                        fill="#FFF0F5"
+                        stroke="#F472B6"
+                        strokeWidth={3}
+                      />
+                      <ellipse
+                        cx={slot.x + slot.w * 0.57}
+                        cy={slot.y + slot.h * 0.17}
+                        rx={slot.w * 0.04}
+                        ry={slot.h * 0.11}
+                        fill="#FFF0F5"
+                        stroke="#F472B6"
+                        strokeWidth={3}
+                      />
+                      <SvgHeart
+                        cx={slot.x + slot.w * 0.36}
+                        cy={slot.y + slot.h * 0.48}
+                        r={12}
+                        fill="#FF6B9E"
+                      />
+                      <SvgHeart
+                        cx={slot.x + slot.w * 0.64}
+                        cy={slot.y + slot.h * 0.48}
+                        r={12}
+                        fill="#FF6B9E"
+                      />
+                    </>
+                  )}
+                  {arPresetId === "cute_glasses_blush" && (
+                    <>
+                      <circle
+                        cx={slot.x + slot.w * 0.43}
+                        cy={slot.y + slot.h * 0.38}
+                        r={slot.w * 0.065}
+                        fill="rgba(255,255,255,0.22)"
+                        stroke="#F472B6"
+                        strokeWidth={5}
+                      />
+                      <circle
+                        cx={slot.x + slot.w * 0.57}
+                        cy={slot.y + slot.h * 0.38}
+                        r={slot.w * 0.065}
+                        fill="rgba(255,255,255,0.22)"
+                        stroke="#F472B6"
+                        strokeWidth={5}
+                      />
+                      <line
+                        x1={slot.x + slot.w * 0.495}
+                        y1={slot.y + slot.h * 0.38}
+                        x2={slot.x + slot.w * 0.505}
+                        y2={slot.y + slot.h * 0.38}
+                        stroke="#F472B6"
+                        strokeWidth={5}
+                      />
+                    </>
+                  )}
+                  {arPresetId === "kitty_whiskers" && (
+                    <>
+                      <polygon
+                        points={`${slot.x + slot.w * 0.36},${slot.y + slot.h * 0.25} ${
+                          slot.x + slot.w * 0.4
+                        },${slot.y + slot.h * 0.11} ${slot.x + slot.w * 0.46},${
+                          slot.y + slot.h * 0.23
+                        }`}
+                        fill="#3F3D56"
+                        stroke="#F472B6"
+                        strokeWidth={3}
+                      />
+                      <polygon
+                        points={`${slot.x + slot.w * 0.64},${slot.y + slot.h * 0.25} ${
+                          slot.x + slot.w * 0.6
+                        },${slot.y + slot.h * 0.11} ${slot.x + slot.w * 0.54},${
+                          slot.y + slot.h * 0.23
+                        }`}
+                        fill="#3F3D56"
+                        stroke="#F472B6"
+                        strokeWidth={3}
+                      />
+                      <SvgBow
+                        cx={slot.x + slot.w * 0.6}
+                        cy={slot.y + slot.h * 0.21}
+                        r={14}
+                        fill="#F472B6"
+                      />
+                    </>
+                  )}
+                  {arPresetId === "royal_princess" && (
+                    <>
+                      <polygon
+                        points={`${slot.x + slot.w * 0.41},${slot.y + slot.h * 0.22} ${
+                          slot.x + slot.w * 0.43
+                        },${slot.y + slot.h * 0.11} ${slot.x + slot.w * 0.47},${
+                          slot.y + slot.h * 0.18
+                        } ${slot.x + slot.w * 0.5},${slot.y + slot.h * 0.09} ${
+                          slot.x + slot.w * 0.53
+                        },${slot.y + slot.h * 0.18} ${slot.x + slot.w * 0.57},${
+                          slot.y + slot.h * 0.11
+                        } ${slot.x + slot.w * 0.59},${slot.y + slot.h * 0.22}`}
+                        fill="#FFD54F"
+                        stroke="#BC922A"
+                        strokeWidth={3}
+                      />
+                      <SvgSparkle
+                        cx={slot.x + slot.w * 0.25}
+                        cy={slot.y + slot.h * 0.24}
+                        r={14}
+                        fill="#FFD54F"
+                      />
+                      <SvgSparkle
+                        cx={slot.x + slot.w * 0.75}
+                        cy={slot.y + slot.h * 0.24}
+                        r={14}
+                        fill="#FFD54F"
+                      />
+                    </>
+                  )}
+                  {arPresetId === "sakura_fairy" && (
+                    <>
+                      <SvgBow
+                        cx={slot.x + slot.w * 0.5}
+                        cy={slot.y + slot.h * 0.16}
+                        r={18}
+                        fill="#F48FB1"
+                      />
+                      <SvgFlower
+                        cx={slot.x + slot.w * 0.22}
+                        cy={slot.y + slot.h * 0.24}
+                        r={16}
+                        fill="#F8BBD0"
+                      />
+                      <SvgFlower
+                        cx={slot.x + slot.w * 0.78}
+                        cy={slot.y + slot.h * 0.76}
+                        r={16}
+                        fill="#F8BBD0"
+                      />
+                    </>
+                  )}
+                </g>
+              )}
             </g>
 
             {/* Double Photo Slot Frame Border */}
@@ -430,7 +602,7 @@ export function LayoutMock({
             />
 
             {/* Cute Corner Sticker Badge on Photo */}
-            {spec.kind !== "ticket" && (
+            {showCornerSticker && (
               <g>
                 <circle
                   cx={stickerX}

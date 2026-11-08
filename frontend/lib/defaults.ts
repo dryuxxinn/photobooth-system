@@ -165,7 +165,7 @@ export const PHOTO_FILTERS: PhotoFilterOption[] = [
     id: "beauty",
     name: "Soft Beauty 🌸",
     desc: "Kulit halus & cerah merona",
-    css: "brightness(1.08) contrast(0.96) saturate(1.08) drop-shadow(0 0 6px rgba(255,182,193,0.3))",
+    css: "brightness(1.08) contrast(0.96) saturate(1.12)",
   },
   {
     id: "bw",
@@ -247,5 +247,51 @@ export const DEFAULT_STICKER_OPTIONS = [
     id: "none",
     name: "Tanpa Stiker (Clean)",
     desc: "Bingkai bersih minimalis tanpa stiker sudut",
+  },
+];
+
+export interface ArPresetChoice {
+  id: string;
+  name: string;
+  emoji: string;
+  desc: string;
+}
+
+export const DEFAULT_AR_PRESETS: ArPresetChoice[] = [
+  {
+    id: "none",
+    name: "Tanpa AR",
+    emoji: "✨",
+    desc: "Foto natural tanpa stiker wajah",
+  },
+  {
+    id: "pink_bunny_sweet",
+    name: "Pink Bunny",
+    emoji: "🐰",
+    desc: "Telinga kelinci & pipi cinta",
+  },
+  {
+    id: "cute_glasses_blush",
+    name: "Cute Glasses",
+    emoji: "👓",
+    desc: "Kacamata aesthetic & perona pipi",
+  },
+  {
+    id: "kitty_whiskers",
+    name: "Kitty Whiskers",
+    emoji: "🐱",
+    desc: "Telinga kucing & pita manis",
+  },
+  {
+    id: "royal_princess",
+    name: "Royal Princess",
+    emoji: "👑",
+    desc: "Mahkota emas & taburan hati",
+  },
+  {
+    id: "sakura_fairy",
+    name: "Sakura Fairy",
+    emoji: "🌸",
+    desc: "Pita pastel & kelopak sakura",
   },
 ];

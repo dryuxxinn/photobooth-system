@@ -33,6 +33,7 @@ class StartSessionRequest(BaseModel):
     template_id: Optional[str] = "classic_strip_3"
     frame_color: Optional[str] = "cream"
     filter_name: Optional[str] = "original"
+    ar_preset_id: Optional[str] = None
 
 
 class CapturePhotoRequest(BaseModel):
@@ -45,6 +46,7 @@ class ProcessImageRequest(BaseModel):
     filter_name: Optional[str] = None
     frame_color: Optional[str] = None
     sticker_id: Optional[str] = None
+    ar_preset_id: Optional[str] = None
     custom_text: Optional[str] = None
     selected_photo_ids: Optional[List[str]] = None
 
@@ -84,6 +86,7 @@ class SessionDetailResponse(BaseModel):
     filter_name: Optional[str] = "original"
     frame_color: Optional[str] = "cream"
     sticker_id: Optional[str] = "sweet_bows"
+    ar_preset_id: Optional[str] = None
     processed_image_path: Optional[str] = None
     processed_image_url: Optional[str] = None
     gif_path: Optional[str] = None

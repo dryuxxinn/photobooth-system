@@ -34,10 +34,11 @@
 
 | Tool / Driver | Peran | Status | Catatan |
 | :--- | :--- | :--- | :--- |
-| **gPhoto2 (CLI)** | Command line interface pengujian kamera | Direncanakan (Linux) | Digunakan di Ubuntu Server untuk verifikasi tethering |
-| **libgphoto2** | Pustaka C untuk kontrol kamera Canon | Direncanakan (Linux) | Binding via Python subprocess atau ctypes |
-| **SimulatedCamera** | Driver mock kamera berbasis software | **Terimplementasi** | Menghasilkan foto dummy dinamis (Pillow) untuk testing & development tanpa hardware |
-| **Canon EOS 700D** | Kamera DSLR utama | Hardware Fisik | Koneksi via USB data, resolusi asli 18 MP (5184 x 3456) |
+| **WifiCamera (`sony_http` & `ptpip`)** | Driver kamera nirkabel (Sony Camera Remote JSON-RPC API & PTP/IP) | **Terimplementasi & Terverifikasi** | Teruji langsung dengan **Sony Alpha a6400 (`ILCE-6400`)** via Wi-Fi Direct (`192.168.122.1:10000`, liveview 25 FPS di port `60152`, shutter fisik otomatis) |
+| **Browser UVC / Capture Card (`useWebcam`)** | Integrasi kamera via `navigator.mediaDevices.getUserMedia` | **Terimplementasi & Terverifikasi** | Mendukung webcam perangkat, HDMI-to-USB Capture Card (`USB Video`), dan `EOS Webcam Utility` |
+| **GPhotoCamera (`gphoto2`)** | Driver kamera DSLR via kabel USB (Linux) | **Terimplementasi** | Menggunakan `gphoto2` CLI untuk kamera Canon/Nikon/Sony via USB |
+| **SimulatedCamera** | Driver mock kamera berbasis software | **Terimplementasi** | Menghasilkan foto dummy dinamis (Pillow `1800x1200`) untuk testing & fallback otomatis |
+| **Sony Alpha a6400 / Canon EOS 700D** | Kamera utama photobooth | Hardware Fisik | Mendukung koneksi Wi-Fi Direct tanpa kabel (Sony a6400), HDMI Capture Card, maupun USB |
 | **Dummy Battery (AC Adapter)** | Sumber daya kamera terus-menerus | Wajib Operasional | Menghindari downtime akibat baterai habis saat sesi |
 
 ---
@@ -80,3 +81,13 @@
    - Seluruh kode pengujian diletakkan secara terpisah di folder `tests/` (unit, api, dan simulasi).
 2. **Kamera Simulation Default:**
    - Variabel lingkungan `CAMERA_DRIVER=simulation` memungkinkan seluruh pipeline pengujian berjalan otomatis (CI/CD ready).
+
+---
+
+## 8. Catatan Perubahan Signifikan Inventaris Tools & Hardware
+
+| Komponen Hardware / Tool | Perubahan Signifikan |
+| :--- | :--- |
+| **Sony Alpha a6400 (ILCE-6400)** | Integrasi nirkabel penuh via Wi-Fi Direct: HTTP JSON-RPC port 10000, liveview continuous HTTP stream port 60152, shutter release dengan half-press lock. |
+| **Web Audio API** | Synthesizer audio murni pada frontend browser (menghilangkan ketergantungan library audio pihak ketiga atau file MP3 eksternal). |
+| **Pillow Engine** | Penambahan generator Animasi Boomerang GIF (`compose_gif`), alpha compositing PNG frame overlays kustom, serta filter artistik baru (`beauty`, `cool`, `y2k`). |

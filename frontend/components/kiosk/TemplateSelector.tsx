@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FrameThemeOption,
   SessionDetail,
@@ -8,6 +8,7 @@ import {
 } from "@/types/photobooth";
 import { DEFAULT_STICKER_OPTIONS, PHOTO_FILTERS } from "@/lib/defaults";
 import { inkFor } from "@/lib/color";
+import { photoboothApi, resolveStorageUrl } from "@/services/api";
 import { LayoutMock } from "@/components/LayoutMock";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -18,6 +19,7 @@ import {
   FlowerIcon,
   HeartIcon,
   SparkleIcon,
+  SpinnerIcon,
 } from "@/components/icons";
 
 interface TemplateSelectorProps {
@@ -30,9 +32,19 @@ interface TemplateSelectorProps {
     frameColor: string;
     filterName: string;
     stickerId?: string;
+    arPresetId?: string;
     customText?: string;
   }) => Promise<void>;
 }
+
+const AR_PRESET_CHOICES = [
+  { id: "none", name: "Tanpa AR", emoji: "✨", desc: "Foto natural tanpa stiker" },
+  { id: "pink_bunny_sweet", name: "Pink Bunny", emoji: "🐰", desc: "Telinga kelinci & pipi cinta" },
+  { id: "cute_glasses_blush", name: "Cute Glasses", emoji: "👓", desc: "Kacamata aesthetic & perona pipi" },
+  { id: "kitty_whiskers", name: "Kitty Whiskers", emoji: "🐱", desc: "Telinga kucing & pita manis" },
+  { id: "royal_princess", name: "Royal Princess", emoji: "👑", desc: "Mahkota emas & taburan hati" },
+  { id: "sakura_fairy", name: "Sakura Fairy", emoji: "🌸", desc: "Pita pastel & kelopak sakura" },
+];
 
 export function TemplateSelector({
   session,
@@ -41,8 +53,18 @@ export function TemplateSelector({
   isBusy,
   onApplyAndContinue,
 }: TemplateSelectorProps) {
+  const selectedPhotos = useMemo(() => {
+    if (session.selected_photo_ids && session.selected_photo_ids.length > 0) {
+      const mapped = session.selected_photo_ids
+        .map((id) => session.photos.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p));
+      if (mapped.length > 0) return mapped;
+    }
+    return session.photos;
+  }, [session.photos, session.selected_photo_ids]);
+
   const compatibleTemplates = templates.filter(
-    (t) => t.photos_required === session.photos.length
+    (t) => t.photos_required === selectedPhotos.length
   );
   const displayTemplates =
     compatibleTemplates.length > 0 ? compatibleTemplates : templates;
@@ -59,13 +81,59 @@ export function TemplateSelector({
   const [draftStickerId, setDraftStickerId] = useState<string>(
     session.sticker_id || "sweet_bows"
   );
+  const [draftArPreset, setDraftArPreset] = useState<string>(
+    session.ar_preset_id || "none"
+  );
   const [draftCaption, setDraftCaption] = useState<string>(
     session.customer_name || ""
   );
+  const [previewMode, setPreviewMode] = useState<"frame" | "pose">("frame");
+  const [aiPosePreviewUrl, setAiPosePreviewUrl] = useState<string | null>(null);
+  const [aiPoseLoading, setAiPoseLoading] = useState<boolean>(false);
 
   const activeTemplate =
     displayTemplates.find((t) => t.id === draftTemplateId) ||
     displayTemplates[0];
+
+  useEffect(() => {
+    if (previewMode !== "pose") return;
+    let cancelled = false;
+    setAiPoseLoading(true);
+    photoboothApi
+      .previewAr({
+        session_id: session.session_id,
+        photo_id: selectedPhotos[0]?.id,
+        preset_id: draftArPreset,
+        filter_name: draftFilter,
+        inherit_color_grading: false,
+      })
+      .then((res) => {
+        if (!cancelled) {
+          setAiPosePreviewUrl(
+            resolveStorageUrl(res.rendered_image_url, Date.now())
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiPosePreviewUrl(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAiPoseLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewMode,
+    draftArPreset,
+    draftFilter,
+    session.session_id,
+    selectedPhotos,
+  ]);
 
   const handleSelectTemplateCard = (tpl: TemplateOption) => {
     setDraftTemplateId(tpl.id);
@@ -103,7 +171,7 @@ export function TemplateSelector({
             <div className="flex items-center justify-between">
               <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
                 <FlowerIcon className="size-4 text-sweet-primaryStrong" />
-                <span>1. Pilih Desain & Ukuran Cetak ({session.photos.length} Pose)</span>
+                <span>1. Pilih Desain & Ukuran Cetak ({selectedPhotos.length} Pose Terpilih)</span>
               </h2>
               <span className="px-3 py-1 rounded-full bg-[#FBCFE8] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
                 {activeTemplate?.aspect_label || "2x6 Strip"}
@@ -138,8 +206,11 @@ export function TemplateSelector({
                             : tpl.default_frame || draftFrameColor
                         }
                         frameThemes={frameThemes}
-                        photos={session.photos}
+                        photos={selectedPhotos}
                         captionText={draftCaption}
+                        filterId={draftFilter}
+                        stickerId={draftStickerId}
+                        arPresetId={draftArPreset}
                         className="h-28 w-auto"
                       />
                     </div>
@@ -268,6 +339,53 @@ export function TemplateSelector({
               })}
             </div>
           </Card>
+
+          {/* 5. AR Face & Sticker Presets */}
+          <Card variant="glass" padding="sm" className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading font-extrabold text-base text-sweet-text flex items-center gap-2">
+                <SparkleIcon className="size-4 text-sweet-primaryStrong" />
+                <span>5. AR Face & Sticker Overlays</span>
+              </h2>
+              <span className="text-[11px] font-heading font-bold text-sweet-primaryStrong bg-[#FDF2F8] px-2.5 py-0.5 rounded-full border border-[#FBCFE8]">
+                AI Face-Tracking
+              </span>
+            </div>
+            <div
+              role="group"
+              aria-label="Pilihan efek AR wajah dan stiker"
+              className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+            >
+              {AR_PRESET_CHOICES.map((preset) => {
+                const isSelected = preset.id === draftArPreset;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setDraftArPreset(preset.id)}
+                    className={`min-h-[52px] p-2.5 rounded-2xl border-2 text-left flex items-center gap-2.5 transition-all ${
+                      isSelected
+                        ? "bg-[#FFF0F5] border-[#F472B6] text-sweet-text shadow-sweet ring-2 ring-[#FBCFE8] scale-[1.02]"
+                        : "bg-white/80 hover:bg-white border-white/90 text-sweet-text"
+                    }`}
+                  >
+                    <span className="text-xl shrink-0" aria-hidden="true">
+                      {preset.emoji}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-heading font-extrabold text-xs truncate">
+                        {preset.name}
+                      </div>
+                      <div className="text-[10px] text-sweet-muted truncate">
+                        {preset.desc}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
         </div>
 
         {/* Right: Sticky Live Frame Preview & Caption + Confirm CTA */}
@@ -277,20 +395,68 @@ export function TemplateSelector({
             padding="md"
             className="flex flex-col items-center text-center space-y-3 shadow-sweet-card"
           >
-            <div className="px-4 py-1.5 rounded-full bg-[#F3E8FF] border border-[#DCD6F7] text-xs font-heading font-extrabold text-[#3F3D56] shadow-xs">
-              ✦ Live Frame Preview ✦
+            <div className="inline-flex items-center p-1 rounded-full bg-white/80 border border-[#DCD6F7] shadow-xs gap-1">
+              <button
+                type="button"
+                onClick={() => setPreviewMode("frame")}
+                className={`px-3 py-1 rounded-full text-xs font-heading font-extrabold transition-all ${
+                  previewMode === "frame"
+                    ? "bg-[#F3E8FF] text-[#3F3D56] shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                ✦ Frame Strip
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewMode("pose")}
+                className={`px-3 py-1 rounded-full text-xs font-heading font-extrabold transition-all ${
+                  previewMode === "pose"
+                    ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                ✨ Cek AI AR & Filter
+              </button>
             </div>
 
-            <div className="h-64 flex items-center justify-center py-1">
-              {activeTemplate && (
-                <LayoutMock
-                  template={activeTemplate}
-                  frameColorId={draftFrameColor}
-                  frameThemes={frameThemes}
-                  photos={session.photos}
-                  captionText={draftCaption}
-                  className="h-60 w-auto shadow-sweet-strip rounded-xl"
-                />
+            <div className="h-64 flex items-center justify-center py-1 w-full">
+              {previewMode === "frame" ? (
+                activeTemplate && (
+                  <LayoutMock
+                    template={activeTemplate}
+                    frameColorId={draftFrameColor}
+                    frameThemes={frameThemes}
+                    photos={selectedPhotos}
+                    captionText={draftCaption}
+                    filterId={draftFilter}
+                    stickerId={draftStickerId}
+                    arPresetId={draftArPreset}
+                    className="h-60 w-auto shadow-sweet-strip rounded-xl"
+                  />
+                )
+              ) : (
+                <div className="relative h-60 w-full flex items-center justify-center rounded-2xl overflow-hidden bg-sweet-blush/60 border-2 border-white">
+                  {aiPoseLoading && (
+                    <div className="absolute inset-0 bg-white/75 backdrop-blur-xs z-10 flex flex-col items-center justify-center gap-2">
+                      <SpinnerIcon className="size-7 text-sweet-primaryStrong animate-spin" />
+                      <span className="text-[11px] font-heading font-bold text-sweet-text">
+                        Mendeteksi Wajah & Filter...
+                      </span>
+                    </div>
+                  )}
+                  {aiPosePreviewUrl ? (
+                    <img
+                      src={aiPosePreviewUrl}
+                      alt="Preview AI AR & Filter Pose #1"
+                      className="h-full w-full object-contain rounded-xl"
+                    />
+                  ) : (
+                    <span className="text-xs font-heading font-semibold text-sweet-muted px-4">
+                      Pilih Filter atau AR Preset untuk melihat hasil AI Face-Tracking pada Pose #1
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
@@ -324,6 +490,7 @@ export function TemplateSelector({
                 frameColor: draftFrameColor,
                 filterName: draftFilter,
                 stickerId: draftStickerId,
+                arPresetId: draftArPreset,
                 customText: draftCaption.trim() || undefined,
               })
             }

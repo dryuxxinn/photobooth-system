@@ -118,6 +118,7 @@ class SessionManager:
         template_id: str = "classic_strip_3",
         frame_color: Optional[str] = None,
         filter_name: Optional[str] = "original",
+        ar_preset_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         if self.state != SessionState.IDLE:
             raise SessionTransitionError(
@@ -148,6 +149,7 @@ class SessionManager:
             "filter_name": filter_name or "original",
             "frame_color": frame_color,
             "sticker_id": "sweet_bows",
+            "ar_preset_id": ar_preset_id,
             "processed_image_path": None,
             "processed_image_url": None,
             "gif_path": None,
@@ -338,6 +340,7 @@ class SessionManager:
         filter_name: Optional[str] = None,
         frame_color: Optional[str] = None,
         sticker_id: Optional[str] = None,
+        ar_preset_id: Optional[str] = None,
         custom_text: Optional[str] = None,
         selected_photo_ids: Optional[List[str]] = None,
     ) -> str:
@@ -353,6 +356,8 @@ class SessionManager:
             session["frame_color"] = frame_color
         if sticker_id:
             session["sticker_id"] = sticker_id
+        if ar_preset_id is not None:
+            session["ar_preset_id"] = ar_preset_id
         if custom_text is not None:
             session["customer_name"] = custom_text
         if selected_photo_ids is not None:
@@ -371,6 +376,31 @@ class SessionManager:
         if active_tpl and "photos_required" in active_tpl:
             photo_paths = photo_paths[: active_tpl["photos_required"]]
 
+        # Non-destructively apply AR preset & color filter with proper layer order (Section 13.5)
+        active_filter = session.get("filter_name") or "original"
+        source_paths_for_strip = photo_paths
+        strip_filter_to_apply = active_filter
+        cur_ar_preset = session.get("ar_preset_id")
+        if cur_ar_preset and cur_ar_preset.lower() not in ("none", "off", ""):
+            from backend.app.services.ar import get_sticker_engine
+            engine = get_sticker_engine()
+            ar_photo_paths = []
+            for idx, p in enumerate(photo_paths):
+                ar_out = settings.PROCESSED_DIR / f"ar_{session['session_id']}_{idx}_{p.name}"
+                settings.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+                with Image.open(p) as base_im:
+                    ar_img = engine.render_preset(
+                        base_im,
+                        cur_ar_preset,
+                        seed=42 + idx,
+                        filter_name=active_filter,
+                    )
+                    ar_img.save(ar_out, "JPEG", quality=95)
+                    ar_photo_paths.append(ar_out)
+            source_paths_for_strip = ar_photo_paths
+            # Filter was already applied below the AR stickers; avoid double-filtering
+            strip_filter_to_apply = "original"
+
         output_filename = f"processed_{session['session_id']}.jpg"
         output_path = settings.PROCESSED_DIR / output_filename
         gif_filename = f"gif_{session['session_id']}.gif"
@@ -378,10 +408,10 @@ class SessionManager:
 
         try:
             ImageProcessor.compose_photostrip(
-                photo_paths,
+                source_paths_for_strip,
                 output_path,
                 template_id=session.get("template_id") or "classic_strip_3",
-                filter_name=session.get("filter_name") or "original",
+                filter_name=strip_filter_to_apply,
                 frame_color=session.get("frame_color") or "cream",
                 customer_name=session.get("customer_name"),
                 sticker_id=session.get("sticker_id") or "sweet_bows",
@@ -389,14 +419,20 @@ class SessionManager:
             session["processed_image_path"] = str(output_path)
             session["processed_image_url"] = f"/storage/processed/{output_filename}"
 
-            # Also generate animated Boomerang GIF from all session photos (or selected photos)
-            all_session_paths = [Path(p["original_path"]) for p in session["photos"]]
-            gif_source_paths = all_session_paths if len(all_session_paths) >= 2 else photo_paths
+            # Also generate animated Boomerang GIF
+            if len(source_paths_for_strip) >= 2:
+                gif_source_paths = source_paths_for_strip
+                gif_filter_to_apply = strip_filter_to_apply
+            else:
+                all_session_paths = [Path(p["original_path"]) for p in session["photos"]]
+                gif_source_paths = all_session_paths if len(all_session_paths) >= 2 else source_paths_for_strip
+                gif_filter_to_apply = active_filter if gif_source_paths != source_paths_for_strip else strip_filter_to_apply
+
             try:
                 ImageProcessor.compose_gif(
                     gif_source_paths,
                     gif_output_path,
-                    filter_name=session.get("filter_name") or "original",
+                    filter_name=gif_filter_to_apply,
                     frame_color=session.get("frame_color") or "cream",
                     customer_name=session.get("customer_name"),
                     sticker_id=session.get("sticker_id") or "sweet_bows",

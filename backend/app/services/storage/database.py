@@ -38,6 +38,7 @@ class DatabaseService:
                     frame_color TEXT DEFAULT 'cream',
                     filter_name TEXT DEFAULT 'original',
                     sticker_id TEXT DEFAULT 'sweet_bows',
+                    ar_preset_id TEXT,
                     processed_path TEXT,
                     gif_path TEXT,
                     cloud_share_url TEXT,
@@ -82,6 +83,7 @@ class DatabaseService:
                 ("frame_color", "TEXT DEFAULT 'cream'"),
                 ("filter_name", "TEXT DEFAULT 'original'"),
                 ("sticker_id", "TEXT DEFAULT 'sweet_bows'"),
+                ("ar_preset_id", "TEXT"),
                 ("gif_path", "TEXT"),
                 ("cloud_share_url", "TEXT"),
             ]:
@@ -99,10 +101,10 @@ class DatabaseService:
                 """
                 INSERT INTO sessions (
                     id, customer_name, status, photos_required,
-                    template_id, frame_color, filter_name, sticker_id,
+                    template_id, frame_color, filter_name, sticker_id, ar_preset_id,
                     processed_path, gif_path, cloud_share_url,
                     started_at, completed_at, error_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     customer_name = excluded.customer_name,
                     status = excluded.status,
@@ -110,6 +112,7 @@ class DatabaseService:
                     frame_color = excluded.frame_color,
                     filter_name = excluded.filter_name,
                     sticker_id = excluded.sticker_id,
+                    ar_preset_id = excluded.ar_preset_id,
                     processed_path = excluded.processed_path,
                     gif_path = excluded.gif_path,
                     cloud_share_url = excluded.cloud_share_url,
@@ -125,6 +128,7 @@ class DatabaseService:
                     session.get("frame_color", "cream"),
                     session.get("filter_name", "original"),
                     session.get("sticker_id", "sweet_bows"),
+                    session.get("ar_preset_id"),
                     session.get("processed_image_path"),
                     session.get("gif_path"),
                     session.get("cloud_share_url"),
@@ -155,6 +159,16 @@ class DatabaseService:
                     photo["created_at"],
                 ),
             )
+
+    def get_photo(self, photo_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM photos WHERE id = ? OR filename = ? OR id LIKE ? LIMIT 1",
+                (photo_id, photo_id, f"%_{photo_id}"),
+            ).fetchone()
+            if row:
+                return dict(row)
+            return None
 
     def save_print_job(self, job: Dict[str, Any]) -> None:
         with self._get_conn() as conn:
@@ -216,6 +230,9 @@ class DatabaseService:
                 ),
                 "sticker_id": (
                     row["sticker_id"] if "sticker_id" in row_keys and row["sticker_id"] else "sweet_bows"
+                ),
+                "ar_preset_id": (
+                    row["ar_preset_id"] if "ar_preset_id" in row_keys else None
                 ),
                 "processed_image_path": proc_path,
                 "processed_image_url": proc_url,

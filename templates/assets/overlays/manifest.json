@@ -1,0 +1,298 @@
+{
+  "version": "1.0",
+  "name": "Sweet Studio AR Overlay Assets",
+  "description": "Comprehensive sticker and AR overlay catalog for Sweet Studio Photobooth",
+  "assets": [
+    {
+      "id": "pink_bunny",
+      "name": "Pink Bunny Ears",
+      "category": "face-accessories",
+      "type": "face-anchored",
+      "asset": "face-accessories/bunny/pink_bunny.png",
+      "anchor": "head_top",
+      "placement": {
+        "scale": 1.45,
+        "offset_x": 0.0,
+        "offset_y": -0.15,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 1.0,
+        "z_index": 20,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "cute_glasses",
+      "name": "Golden Circle Glasses",
+      "category": "face-accessories",
+      "type": "face-anchored",
+      "asset": "face-accessories/glasses/cute_glasses.png",
+      "anchor": "eyes_center",
+      "placement": {
+        "scale": 1.15,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.95,
+        "z_index": 30,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "princess_crown",
+      "name": "Princess Crown",
+      "category": "face-accessories",
+      "type": "face-anchored",
+      "asset": "face-accessories/crown/princess_crown.png",
+      "anchor": "head_top",
+      "placement": {
+        "scale": 1.1,
+        "offset_x": 0.0,
+        "offset_y": -0.11,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 1.0,
+        "z_index": 25,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "cat_ears",
+      "name": "Playful Kitty Ears",
+      "category": "face-accessories",
+      "type": "face-anchored",
+      "asset": "face-accessories/cat/cat_ears.png",
+      "anchor": "head_top",
+      "placement": {
+        "scale": 1.35,
+        "offset_x": 0.0,
+        "offset_y": -0.12,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 1.0,
+        "z_index": 20,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "sweet_ribbon",
+      "name": "Sweet Silk Ribbon",
+      "category": "face-accessories",
+      "type": "face-anchored",
+      "asset": "face-accessories/ribbon/sweet_ribbon.png",
+      "anchor": "forehead",
+      "placement": {
+        "scale": 0.95,
+        "offset_x": 0.0,
+        "offset_y": -0.06,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 1.0,
+        "z_index": 22,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "pastel_blush_left",
+      "name": "Pastel Cheek Blush (L)",
+      "category": "face-decorations",
+      "type": "face-anchored",
+      "asset": "face-decorations/blush/pastel_blush.png",
+      "anchor": "left_cheek",
+      "placement": {
+        "scale": 0.55,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.85,
+        "z_index": 12,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "pastel_blush_right",
+      "name": "Pastel Cheek Blush (R)",
+      "category": "face-decorations",
+      "type": "face-anchored",
+      "asset": "face-decorations/blush/pastel_blush.png",
+      "anchor": "right_cheek",
+      "placement": {
+        "scale": 0.55,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.85,
+        "z_index": 12,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "cheek_hearts",
+      "name": "Cheek Sweet Hearts",
+      "category": "face-decorations",
+      "type": "face-anchored",
+      "asset": "face-decorations/hearts/cheek_hearts.png",
+      "anchor": "right_cheek",
+      "placement": {
+        "scale": 0.45,
+        "offset_x": 0.02,
+        "offset_y": 0.0,
+        "rotation_offset": 12.0
+      },
+      "render": {
+        "opacity": 0.95,
+        "z_index": 35,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "cute_bandaid",
+      "name": "Heart Anime Bandaid",
+      "category": "face-decorations",
+      "type": "face-anchored",
+      "anchor": "nose",
+      "asset": "face-decorations/bandaid/cute_bandaid.png",
+      "placement": {
+        "scale": 0.65,
+        "offset_x": 0.0,
+        "offset_y": -0.02,
+        "rotation_offset": -8.0
+      },
+      "render": {
+        "opacity": 0.95,
+        "z_index": 38,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "floating_stars",
+      "name": "Golden Sparkle Stars",
+      "category": "floating",
+      "type": "random-scatter",
+      "asset": "floating/stars/floating_stars.png",
+      "placement": {
+        "scale": 0.85,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.9,
+        "z_index": 15,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "magical_glitter",
+      "name": "Magical Fairy Glitter",
+      "category": "floating",
+      "type": "random-scatter",
+      "asset": "floating/glitter/magical_glitter.png",
+      "placement": {
+        "scale": 0.9,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.92,
+        "z_index": 16,
+        "fit": "contain"
+      },
+      "enabled": true
+    },
+    {
+      "id": "sakura_petals",
+      "name": "Sakura Blossom Petals",
+      "category": "decorative",
+      "type": "random-scatter",
+      "asset": "decorative/flowers/sakura_petals.png",
+      "placement": {
+        "scale": 0.85,
+        "offset_x": 0.0,
+        "offset_y": 0.0,
+        "rotation_offset": 0.0
+      },
+      "render": {
+        "opacity": 0.88,
+        "z_index": 14,
+        "fit": "contain"
+      },
+      "enabled": true
+    }
+  ],
+  "presets": [
+    {
+      "id": "pink_bunny_sweet",
+      "name": "\ud83d\udc30 Pink Bunny & Blush",
+      "description": "Telinga kelinci manis dengan perona pipi lembut dan kilau bintang",
+      "asset_ids": [
+        "pink_bunny",
+        "pastel_blush_left",
+        "pastel_blush_right",
+        "floating_stars"
+      ]
+    },
+    {
+      "id": "cute_glasses_blush",
+      "name": "\ud83d\udc53 Round Glasses & Heart",
+      "description": "Kacamata bulat estetik dengan stiker hati di pipi",
+      "asset_ids": [
+        "cute_glasses",
+        "pastel_blush_left",
+        "pastel_blush_right",
+        "cheek_hearts"
+      ]
+    },
+    {
+      "id": "kitty_whiskers",
+      "name": "\ud83d\udc31 Playful Kitty & Bandaid",
+      "description": "Telinga kucing imut dengan plester hati di hidung",
+      "asset_ids": [
+        "cat_ears",
+        "cute_bandaid",
+        "pastel_blush_left",
+        "pastel_blush_right"
+      ]
+    },
+    {
+      "id": "royal_princess",
+      "name": "\ud83d\udc51 Royal Princess & Sparkles",
+      "description": "Mahkota putri berkilau dengan taburan glitter peri",
+      "asset_ids": [
+        "princess_crown",
+        "magical_glitter"
+      ]
+    },
+    {
+      "id": "sakura_fairy",
+      "name": "\ud83c\udf38 Sakura Petals & Silk Bow",
+      "description": "Kelopak bunga sakura berguguran dengan pita sutra rambut",
+      "asset_ids": [
+        "sweet_ribbon",
+        "sakura_petals",
+        "cheek_hearts"
+      ]
+    }
+  ]
+}

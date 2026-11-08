@@ -626,3 +626,18 @@ Saya tidak menyarankan membuat semua fitur sekaligus. Buat versi minimum yang su
 - **Pengembangan awal:** Seluruh UI dapat diuji dengan kamera simulasi sebelum USB passthrough siap.
 
 Dengan pendekatan ini, kamu bisa menyelesaikan desain dan flow terlebih dahulu tanpa harus menunggu integrasi kamera berhasil. Langkah paling tepat berikutnya adalah membuat mockup visual untuk seluruh layar MVP, lalu menerjemahkannya menjadi komponen Next.js. Setelah mockup disetujui, kita dapat mengimplementasikan halaman secara bertahap dengan alur yang sudah ditetapkan.
+
+---
+
+## 9. Catatan Perubahan Signifikan Realisasi UI/UX (LumaBooth Parity)
+
+| Komponen Layar | Perubahan Signifikan yang Direalisasikan |
+| :--- | :--- |
+| **WelcomeScreen** | Penambahan integrasi PaymentModal otomatis saat tombol mulai disentuh (QRIS dinamis dan voucher kasir). |
+| **PreparationScreen** | Penambahan pemilih sumber kamera (`Kamera Perangkat / USB Capture Card` vs `Kamera Server Wi-Fi`), daftar input video, pemilih filter live 8 varian, dan durasi timer (1s/3s/5s). |
+| **CountdownOverlay** | Penambahan tombol **Jepret Sekarang 📸** di kanan bawah untuk potret instan, Web Audio synthesizer (beep countdown & shutter sound), dan layar tinjauan foto 5 detik antar-pose dengan tombol **Foto Ulang ↺**. |
+| **PhotoSelection** | Layar seleksi interaktif yang memungkinkan pelanggan memilih foto terbaik dari 6 pose sesuai jumlah slot frame template. |
+| **TemplateSelector** | Kustomisasi sekunder di mana pelanggan dapat mengganti warna bingkai, filter, paket stiker, dan teks kustom sebelum cetak. |
+| **PhotoPreview** | Tampilan dual-tab untuk mempratinjau hasil cetak **Strip JPEG** dan **Animasi Boomerang GIF** sebelum dikirim ke printer. |
+| **CompletionScreen** | Penyajian QR code yang mengarahkan tamu ke microsite galeri pribadi (`/share/[sessionId]`) untuk mengunduh Strip JPEG, Boomerang GIF, dan seluruh foto asli ke smartphone. |
+| **Sound Engine** | Synthesizer Web Audio API murni di `lib/sound.ts` (countdown beep, shutter click, success chime) tanpa file MP3 eksternal. |

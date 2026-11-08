@@ -1,4 +1,7 @@
 import {
+  ARPresetOption,
+  ARRenderResponse,
+  ARStickerAsset,
   CameraStatus,
   FrameThemeOption,
   HealthStatus,
@@ -93,6 +96,7 @@ export const photoboothApi = {
       templates: TemplateOption[];
       frame_themes?: FrameThemeOption[];
       sticker_options?: StickerOption[];
+      ar_presets?: ARPresetOption[];
     }>("/templates"),
 
   getCurrentSession: () =>
@@ -110,12 +114,50 @@ export const photoboothApi = {
 
   getPrintJobs: () => request<{ jobs: PrintJobRecord[] }>("/printer/jobs"),
 
+  getArPresets: () => request<ARPresetOption[]>("/ar/presets"),
+
+  getArAssets: (category?: string) =>
+    request<ARStickerAsset[]>(
+      category ? `/ar/assets?category=${encodeURIComponent(category)}` : "/ar/assets"
+    ),
+
+  previewAr: (payload: {
+    photo_id?: string;
+    session_id?: string;
+    image_path?: string;
+    image_data?: string;
+    preset_id?: string;
+    filter_name?: string;
+    seed?: number;
+    inherit_color_grading?: boolean;
+  }) =>
+    request<ARRenderResponse>("/ar/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  renderAr: (payload: {
+    photo_id?: string;
+    session_id?: string;
+    image_path?: string;
+    image_data?: string;
+    preset_id?: string;
+    filter_name?: string;
+    seed?: number;
+    inherit_color_grading?: boolean;
+  }) =>
+    request<ARRenderResponse>("/ar/render", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   startSession: (payload: {
     customer_name?: string;
     photos_required: number;
     template_id: string;
     frame_color?: string;
     filter_name?: string;
+    ar_preset_id?: string;
   }) =>
     request<SessionDetail>("/session/start", {
       method: "POST",
@@ -139,6 +181,7 @@ export const photoboothApi = {
     template_id?: string;
     frame_color?: string;
     sticker_id?: string;
+    ar_preset_id?: string;
     custom_text?: string;
     selected_photo_ids?: string[];
   }) =>

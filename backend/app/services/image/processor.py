@@ -317,10 +317,14 @@ class ImageProcessor:
     @staticmethod
     def apply_filter(img: Image.Image, filter_name: str = "original") -> Image.Image:
         """Apply optional color filter preset to a PIL image."""
-        mode = (filter_name or "original").lower()
+        mode = (filter_name or "original").lower().strip()
         rgb = img.convert("RGB")
-        if mode in ("bw", "mono"):
-            return ImageOps.grayscale(rgb).convert("RGB")
+        if mode in ("original", "none", ""):
+            return rgb
+        elif mode in ("bw", "mono"):
+            gray = ImageOps.grayscale(rgb).convert("RGB")
+            contrast = ImageEnhance.Contrast(gray).enhance(1.18)
+            return ImageEnhance.Brightness(contrast).enhance(1.03)
         elif mode == "warm":
             enhancer = ImageEnhance.Color(rgb)
             warmed = enhancer.enhance(1.25)
@@ -329,11 +333,20 @@ class ImageProcessor:
             b = b.point(lambda i: int(i * 0.93))
             return Image.merge("RGB", (r, g, b))
         elif mode == "contrast":
-            return ImageEnhance.Contrast(rgb).enhance(1.3)
+            pop = ImageEnhance.Color(rgb).enhance(1.15)
+            return ImageEnhance.Contrast(pop).enhance(1.28)
         elif mode == "vintage":
             gray = ImageOps.grayscale(rgb)
             sepia = ImageOps.colorize(gray, "#2B1D0E", "#F7E7CE")
-            return Image.blend(rgb, sepia, 0.55)
+            blended = Image.blend(rgb, sepia, 0.55)
+            return ImageEnhance.Contrast(blended).enhance(1.06)
+        elif mode == "sepia":
+            gray = ImageOps.grayscale(rgb)
+            sepia = ImageOps.colorize(gray, "#3B2712", "#FBF0D9")
+            return Image.blend(rgb, sepia, 0.72)
+        elif mode == "vivid":
+            saturated = ImageEnhance.Color(rgb).enhance(1.38)
+            return ImageEnhance.Contrast(saturated).enhance(1.14)
         elif mode == "beauty":
             # Soft skin smoothing + gentle rosy brightness boost (Korean Beauty Cam style)
             smoothed = rgb.filter(ImageFilter.SMOOTH_MORE)

@@ -6,6 +6,7 @@ from backend.app.core.config import settings
 from backend.app.schemas.session import (
     CapturePhotoRequest,
     CloudSyncRequest,
+    ProcessImageRequest,
     QrisCreateRequest,
     StartSessionRequest,
     SessionDetailResponse,
@@ -43,6 +44,7 @@ def start_session(payload: StartSessionRequest = StartSessionRequest()):
             template_id=template_id,
             frame_color=payload.frame_color,
             filter_name=payload.filter_name,
+            ar_preset_id=payload.ar_preset_id,
         )
         return SessionDetailResponse(**session)
     except SessionTransitionError as e:
@@ -137,10 +139,12 @@ def retake_last_photo(session_id: str):
 @router.post("/{session_id}/process", response_model=SessionDetailResponse)
 def process_session(
     session_id: str,
+    payload: ProcessImageRequest | None = None,
     template_id: str | None = None,
     filter_name: str | None = None,
     frame_color: str | None = None,
     sticker_id: str | None = None,
+    ar_preset_id: str | None = None,
     custom_text: str | None = None,
     selected_photo_ids: list[str] | None = None,
 ):
@@ -152,12 +156,22 @@ def process_session(
             detail=f"Session '{session_id}' is not active.",
         )
 
+    if payload:
+        template_id = payload.template_id or template_id
+        filter_name = payload.filter_name or filter_name
+        frame_color = payload.frame_color or frame_color
+        sticker_id = payload.sticker_id or sticker_id
+        ar_preset_id = payload.ar_preset_id or ar_preset_id
+        custom_text = payload.custom_text or custom_text
+        selected_photo_ids = payload.selected_photo_ids or selected_photo_ids
+
     try:
         manager.process_session_photos(
             template_id=template_id,
             filter_name=filter_name,
             frame_color=frame_color,
             sticker_id=sticker_id,
+            ar_preset_id=ar_preset_id,
             custom_text=custom_text,
             selected_photo_ids=selected_photo_ids,
         )

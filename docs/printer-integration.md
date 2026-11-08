@@ -18,3 +18,14 @@ Periksa nama antrean printer:
 lpstat -p -d
 ```
 Lalu sesuaikan variabel `PRINTER_NAME` pada `.env` atau `docker-compose.yml`.
+
+---
+
+## Catatan Perubahan Signifikan Fitur Pencetakan & Template Overlay
+
+| Fitur / Komponen | Perubahan Signifikan | Penjelasan & Rincian Teknis |
+| :--- | :--- | :--- |
+| **Multi-Copy Printing** | Dukungan parameter `copies` pada `POST /print` | Pelanggan/operator dapat mencetak 1 hingga 4 rangkap strip sekaligus dengan tracking `print_jobs` di SQLite. |
+| **Custom PNG Frame Overlay** | Integrasi PNG transparan ke proses cetak | Sebelum dikirim ke antrean cetak, `ImageProcessor._apply_custom_png_overlay()` menumpuk desain bingkai kustom event tepat di atas kanvas strip. |
+| **Twin-Strip Split & Cut** | Dukungan layout strip ganda (2x6 inci) | Template twin-strip menduplikasi strip foto secara horizontal sehingga ketika dicetak di kertas 4x6 inci dapat dipotong menjadi dua strip identik. |
+| **Spooler State Tracking** | Pencatatan status `print_jobs` di DB | Setiap pekerjaan cetak dicatat dengan status `QUEUED`, `PRINTING`, `COMPLETED`, atau `ERROR` yang dapat dipantau dari `/admin`. |

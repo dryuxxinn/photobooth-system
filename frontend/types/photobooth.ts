@@ -43,6 +43,7 @@ export interface SessionDetail {
   filter_name?: string | null;
   frame_color?: string | null;
   sticker_id?: string | null;
+  ar_preset_id?: string | null;
   processed_image_path?: string | null;
   processed_image_url?: string | null;
   gif_path?: string | null;
@@ -131,6 +132,32 @@ export interface StickerOption {
   desc: string;
 }
 
+export interface ARPresetOption {
+  id: string;
+  name: string;
+  description: string;
+  asset_ids: string[];
+}
+
+export interface ARStickerAsset {
+  id: string;
+  name: string;
+  category: string;
+  type: "face-anchored" | "canvas-position" | "random-scatter";
+  asset: string;
+  anchor?: string | null;
+  enabled: boolean;
+  preview_url?: string | null;
+}
+
+export interface ARRenderResponse {
+  success: boolean;
+  rendered_image_url: string;
+  faces_detected: number;
+  effects_applied: number;
+  message: string;
+}
+
 export interface FrameThemeOption {
   id: string;
   name: string;
@@ -153,4 +180,5 @@ export interface BoothOperatorConfig {
   preferredDeviceId?: string | null;
   isMirrored?: boolean;
   defaultFilter?: string;
+  defaultArPreset?: string;
 }

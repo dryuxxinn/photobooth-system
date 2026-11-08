@@ -10,6 +10,7 @@ import {
   PREVIEW_IDLE_SECONDS,
   PREVIEW_IDLE_WARN_SECONDS,
 } from "@/lib/config";
+import { DEFAULT_AR_PRESETS, PHOTO_FILTERS } from "@/lib/defaults";
 import { useIdleCountdown } from "@/hooks/useIdleCountdown";
 import { resolveStorageUrl } from "@/services/api";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,14 @@ interface PhotoPreviewProps {
   imageVersion: number;
   onOpenChangeFrame: () => void;
   onBackToPhotoSelection?: () => void;
+  onQuickCustomize?: (opts: {
+    templateId: string;
+    frameColor: string;
+    filterName: string;
+    stickerId?: string;
+    arPresetId?: string;
+    customText?: string;
+  }) => Promise<void>;
   onPrint: (copies: number) => Promise<void>;
   onFinishWithoutPrint: () => Promise<void>;
 }
@@ -52,6 +61,7 @@ export function PhotoPreview({
   imageVersion,
   onOpenChangeFrame,
   onBackToPhotoSelection,
+  onQuickCustomize,
   onPrint,
   onFinishWithoutPrint,
 }: PhotoPreviewProps) {
@@ -88,6 +98,27 @@ export function PhotoPreview({
 
   const activeTemplate = templates.find((t) => t.id === session.template_id);
   const activeTheme = frameThemes.find((f) => f.id === session.frame_color);
+  const activeFilter = PHOTO_FILTERS.find(
+    (f) => f.id === (session.filter_name || "original")
+  );
+  const activeArPreset = DEFAULT_AR_PRESETS.find(
+    (p) => p.id === (session.ar_preset_id || "none")
+  );
+
+  const handleQuickFilterOrAr = async (opts: {
+    filterName?: string;
+    arPresetId?: string;
+  }) => {
+    if (!onQuickCustomize || isBusy) return;
+    await onQuickCustomize({
+      templateId: session.template_id || "retro_strip_4",
+      frameColor: session.frame_color || "pink",
+      filterName: opts.filterName ?? session.filter_name ?? "original",
+      stickerId: session.sticker_id || "sweet_bows",
+      arPresetId: opts.arPresetId ?? session.ar_preset_id ?? "none",
+      customText: session.customer_name || undefined,
+    });
+  };
 
   const handleShareOrDownload = async () => {
     if (!rawCompositeUrl) return;
@@ -290,7 +321,11 @@ export function PhotoPreview({
                 </h1>
                 <p className="text-xs sm:text-sm text-sweet-muted font-heading font-semibold">
                   {activeTemplate?.name || "Sweet Strip"} • Frame{" "}
-                  {activeTheme?.name || "Sweet Pink"}
+                  {activeTheme?.name || "Sweet Pink"} •{" "}
+                  {activeFilter?.name || "Original"}
+                  {activeArPreset && activeArPreset.id !== "none"
+                    ? ` • ${activeArPreset.emoji} ${activeArPreset.name}`
+                    : ""}
                 </p>
               </div>
 
@@ -366,6 +401,64 @@ export function PhotoPreview({
                   KODE QR & SHARE
                 </Button>
               </div>
+
+              {/* Quick Filter & AR Switcher directly on Preview Screen */}
+              {onQuickCustomize && (
+                <div className="pt-2 space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-heading font-extrabold text-sweet-muted mr-1">
+                      Filter Cepat:
+                    </span>
+                    {PHOTO_FILTERS.map((flt) => {
+                      const isSel =
+                        (session.filter_name || "original") === flt.id;
+                      return (
+                        <button
+                          key={flt.id}
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() =>
+                            handleQuickFilterOrAr({ filterName: flt.id })
+                          }
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-extrabold border transition-all ${
+                            isSel
+                              ? "bg-[#DCD6F7] border-[#9E8CE0] text-sweet-text shadow-xs"
+                              : "bg-white/75 hover:bg-white border-white text-sweet-muted"
+                          }`}
+                        >
+                          {flt.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-heading font-extrabold text-sweet-muted mr-1">
+                      AR Stiker:
+                    </span>
+                    {DEFAULT_AR_PRESETS.map((prs) => {
+                      const isSel =
+                        (session.ar_preset_id || "none") === prs.id;
+                      return (
+                        <button
+                          key={prs.id}
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() =>
+                            handleQuickFilterOrAr({ arPresetId: prs.id })
+                          }
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-extrabold border transition-all ${
+                            isSel
+                              ? "bg-[#FFF0F5] border-[#F472B6] text-sweet-text shadow-xs"
+                              : "bg-white/75 hover:bg-white border-white text-sweet-muted"
+                          }`}
+                        >
+                          {prs.emoji} {prs.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Print Section Box */}

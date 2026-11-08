@@ -229,7 +229,8 @@ export function usePhotoboothSession() {
           let capturedSuccessfully = false;
           try {
             setIsBusy(true);
-            const webcamImageData = webcam.captureFrameDataUrl(getFilterCss(selectedFilter));
+            // Capture pure raw RGB frame; color filter & AR stickers are applied non-destructively by the backend
+            const webcamImageData = webcam.captureFrameDataUrl();
             await photoboothApi.capturePhoto(
               activeSession.session_id,
               webcamImageData
@@ -477,7 +478,8 @@ export function usePhotoboothSession() {
           session_id: session.session_id,
           template_id: selectedTemplate.id,
           frame_color: selectedFrameColor,
-          filter_name: session.filter_name || "original",
+          filter_name: session.filter_name || selectedFilter || "original",
+          ar_preset_id: session.ar_preset_id || undefined,
           custom_text: session.customer_name || undefined,
           selected_photo_ids: selectedPhotoIds,
         });
@@ -507,6 +509,7 @@ export function usePhotoboothSession() {
       frameColor?: string;
       templateId?: string;
       stickerId?: string;
+      arPresetId?: string;
       customText?: string;
       selectedPhotoIds?: string[];
     }) => {
@@ -529,6 +532,7 @@ export function usePhotoboothSession() {
           frame_color: opts.frameColor ?? session.frame_color ?? "pink",
           template_id: opts.templateId ?? session.template_id ?? undefined,
           sticker_id: opts.stickerId ?? session.sticker_id ?? "sweet_bows",
+          ar_preset_id: opts.arPresetId ?? session.ar_preset_id ?? undefined,
           custom_text: opts.customText,
           selected_photo_ids:
             opts.selectedPhotoIds ?? session.selected_photo_ids ?? undefined,

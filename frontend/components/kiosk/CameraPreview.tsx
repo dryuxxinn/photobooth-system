@@ -38,6 +38,7 @@ interface CameraPreviewProps {
   attachVideoRef?: (node: HTMLVideoElement | null) => void;
   onRetryWebcam?: () => void;
   filterCss?: string;
+  faceGuideStatus?: "detecting" | "ready";
   children?: React.ReactNode;
   className?: string;
   containerClassName?: string;
@@ -65,6 +66,7 @@ export function CameraPreview({
   attachVideoRef,
   onRetryWebcam,
   filterCss = "none",
+  faceGuideStatus = "ready",
   children,
   className = "",
   containerClassName = "",
@@ -125,8 +127,8 @@ export function CameraPreview({
             <CameraIcon className="size-3.5 text-[#F472B6]" />
             <span>
               {mode === "preparation"
-                ? `${photosRequired} Pose Frame`
-                : `Foto ${Math.min(photosTaken + 1, photosRequired)} dari ${photosRequired}`}
+                ? `Sesi 6 Pose • Frame ${photosRequired} Slot`
+                : `Foto ${Math.min(photosTaken + 1, 6)} dari 6 Pose`}
             </span>
           </div>
         </div>
@@ -145,19 +147,72 @@ export function CameraPreview({
           />
         )}
 
-        {/* Face Position Guide Overlay (Oval dashed line) - Only in preparation mode */}
-        {isUsingWebcam && streamReady && mode === "preparation" && (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10"
-          >
-            <div className="w-48 sm:w-56 h-60 sm:h-72 rounded-[50%] border-2 border-dashed border-white/70 flex items-end justify-center pb-3 shadow-xs">
-              <span className="px-3.5 py-1 rounded-full bg-[#3F3D56]/60 text-white text-[11px] font-heading font-bold backdrop-blur-xs">
-                ✦ Posisikan wajah di dalam garis bantu ✦
-              </span>
+        {/* Face Position Guide Overlay (Generous Portrait Frame Guide) - Only in preparation mode */}
+        {((isUsingWebcam && streamReady) || (!isUsingWebcam && serverCameraReady)) &&
+          mode === "preparation" && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10"
+            >
+              {/* Dynamic Status Pill positioned at Top (safely above the head, never covers chin/face) */}
+              <div className="absolute top-14 inset-x-4 flex items-center justify-center pointer-events-none">
+                <div
+                  className={`px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] font-heading font-extrabold flex items-center gap-1.5 shadow-sm transition-all duration-300 ${
+                    faceGuideStatus === "ready"
+                      ? "bg-emerald-500/90 text-white border-white/60 animate-sticker-pop"
+                      : "bg-[#3F3D56]/80 text-white border-white/40"
+                  }`}
+                >
+                  <span
+                    className={`size-2 rounded-full ${
+                      faceGuideStatus === "ready"
+                        ? "bg-white animate-ping"
+                        : "bg-[#F472B6] animate-pulse"
+                    }`}
+                  />
+                  <span>
+                    {faceGuideStatus === "ready"
+                      ? "Wajah Terdeteksi • Looking Good ♡"
+                      : "✦ Posisikan Wajah di Area Tengah ✦"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Generous Portrait Framing Guide (Width ~46%, Height ~74%, comfortably frames from hair to chin/neck) */}
+              <div className="relative w-[46%] max-w-[280px] min-w-[190px] h-[74%] max-h-[360px] min-h-[250px] flex items-center justify-center">
+                {/* 4 Corner Focus Reticles */}
+                <div
+                  className={`absolute -top-1.5 -left-1.5 size-4 border-t-2 border-l-2 transition-colors duration-300 ${
+                    faceGuideStatus === "ready" ? "border-emerald-400" : "border-white/60"
+                  }`}
+                />
+                <div
+                  className={`absolute -top-1.5 -right-1.5 size-4 border-t-2 border-r-2 transition-colors duration-300 ${
+                    faceGuideStatus === "ready" ? "border-emerald-400" : "border-white/60"
+                  }`}
+                />
+                <div
+                  className={`absolute -bottom-1.5 -left-1.5 size-4 border-b-2 border-l-2 transition-colors duration-300 ${
+                    faceGuideStatus === "ready" ? "border-emerald-400" : "border-white/60"
+                  }`}
+                />
+                <div
+                  className={`absolute -bottom-1.5 -right-1.5 size-4 border-b-2 border-r-2 transition-colors duration-300 ${
+                    faceGuideStatus === "ready" ? "border-emerald-400" : "border-white/60"
+                  }`}
+                />
+
+                {/* True Vertical Biometric Oval with generous height */}
+                <div
+                  className={`w-full h-full rounded-[48%] border-2 border-dashed transition-all duration-500 ${
+                    faceGuideStatus === "ready"
+                      ? "border-emerald-300/85 shadow-[0_0_24px_rgba(52,211,153,0.3)] scale-[1.01]"
+                      : "border-white/65 shadow-xs"
+                  }`}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Full-size preview of photo just taken during 5s review intermission */}
         {latestSrc && isReviewing && (
@@ -165,6 +220,7 @@ export function CameraPreview({
             <img
               src={latestSrc}
               alt={`Hasil foto ke-${latestPhoto?.index || photosTaken}`}
+              style={{ filter: filterCss || "none" }}
               className="w-full h-full object-cover"
             />
           </div>
@@ -179,6 +235,7 @@ export function CameraPreview({
               <img
                 src={latestSrc}
                 alt={`Foto terakhir #${latestPhoto?.index || photosTaken}`}
+                style={{ filter: filterCss || "none" }}
                 className="w-20 h-14 object-cover rounded-xl"
               />
               <span className="pr-2 font-heading font-bold text-xs text-sweet-text">

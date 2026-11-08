@@ -183,6 +183,7 @@ export default function KioskHomePage() {
         {kioskStep === "PREPARATION" && state === "IDLE" && (
           <PreparationScreen
             cameraStatus={cameraStatus}
+            printerStatus={printerStatus}
             templates={templates}
             frameThemes={frameThemes}
             selectedTemplate={selectedTemplate}
@@ -297,6 +298,7 @@ export default function KioskHomePage() {
             imageVersion={imageVersion}
             onOpenChangeFrame={() => setKioskStep("TEMPLATE_SELECTION")}
             onBackToPhotoSelection={backToPhotoSelection}
+            onQuickCustomize={customizePreview}
             onPrint={printAndFinish}
             onFinishWithoutPrint={finishWithoutPrint}
           />
