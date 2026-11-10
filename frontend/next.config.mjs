@@ -14,6 +14,10 @@ const nextConfig = {
         destination: `${backendHost}/session/:path*`,
       },
       {
+        source: "/payment/:path*",
+        destination: `${backendHost}/payment/:path*`,
+      },
+      {
         source: "/camera/:path*",
         destination: `${backendHost}/camera/:path*`,
       },
