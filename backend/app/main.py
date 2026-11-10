@@ -46,7 +46,7 @@ from backend.app.api.session import handle_doku_notification
 app.add_api_route(
     "/payment/doku/notify",
     handle_doku_notification,
-    methods=["POST"],
+    methods=["GET", "POST", "HEAD"],
     tags=["Payment"],
     summary="DOKU Webhook Notification Root Route",
 )

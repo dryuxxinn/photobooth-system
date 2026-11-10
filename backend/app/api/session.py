@@ -263,14 +263,22 @@ def confirm_qris_payment(transaction_id: str):
     return record
 
 
-@router.post("/payment/doku/notify")
+@router.api_route("/payment/doku/notify", methods=["GET", "POST", "HEAD"])
 async def handle_doku_notification(request: Request):
     """
     DOKU Payment Gateway Webhook notification endpoint.
-    Triggered when customer successfully scans and pays via Dynamic QRIS.
+    Supports GET/HEAD for healthcheck & URL verification pings from DOKU Dashboard,
+    and POST for real transaction payment notifications.
     """
+    if request.method in ("GET", "HEAD"):
+        return {"status": "OK", "message": "DOKU notification endpoint is active and healthy."}
+
     body_bytes = await request.body()
     headers = dict(request.headers)
+
+    # If DOKU sends an empty test ping or verification request
+    if not body_bytes or body_bytes.strip() in (b"", b"{}", b'{"test":true}'):
+        return {"status": "SUCCESS", "message": "DOKU test handshake verified."}
 
     doku = get_doku_service()
     is_valid, reason = doku.verify_webhook_signature(
