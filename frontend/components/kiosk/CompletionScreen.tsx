@@ -46,73 +46,53 @@ export function CompletionScreen({
     window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
-  // Pastel confetti particles
-  const confettiColors = ["#FBCFE8", "#F472B6", "#DCD6F7", "#DEF1FF", "#E0F5E9", "#FCF9F2"];
-
   return (
     <section
       aria-labelledby="completion-heading"
-      className="flex-1 min-h-0 flex flex-col items-center justify-between px-6 py-6 text-center overflow-y-auto kiosk-scroll relative"
+      className="flex-1 min-h-0 flex flex-col items-center justify-between px-6 py-4 text-center overflow-hidden relative"
     >
-      {/* Subtle Pastel Falling Confetti Background */}
-      <div aria-hidden="true" className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <span
-            key={i}
-            className="absolute rounded-full animate-float-soft"
-            style={{
-              top: `${(i * 19) % 95}%`,
-              left: `${(i * 13) % 96}%`,
-              width: `${(i % 3) * 3 + 8}px`,
-              height: `${(i % 3) * 3 + 8}px`,
-              backgroundColor: confettiColors[i % confettiColors.length],
-              opacity: 0.7,
-              animationDuration: `${3.5 + (i % 5) * 0.8}s`,
-              animationDelay: `${(i % 7) * 0.4}s`,
-            }}
-          />
-        ))}
-      </div>
-
       {/* 2-Column Side-by-Side Container */}
-      <div className="max-w-6xl w-full my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 px-4 sm:px-6">
-        {/* Kolom Kiri: Final Photo Strip & Boomerang GIF Centerpiece Preview (~74dvh) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-3 animate-container-left">
+      <div className="max-w-6xl w-full my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 px-4 sm:px-6 flex-1 min-h-0">
+        {/* Kolom Kiri: Final Photo Strip & Boomerang GIF Centerpiece Preview in 3D Stage */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-3 animate-container-left antigravity-stage">
           {gifImageUrl && (
             <div
               role="group"
               aria-label="Pilih tampilan hasil foto atau Boomerang GIF"
-              className="inline-flex items-center p-1 rounded-full bg-white/85 border border-white/90 shadow-xs gap-1"
+              className="inline-flex items-center p-1 rounded-2xl bg-white border border-[#F3E6EE] gap-1 shadow-xs"
             >
               <button
                 type="button"
                 aria-pressed={mediaView === "strip"}
                 onClick={() => setMediaView("strip")}
-                className={`min-h-[36px] px-4 rounded-full font-heading font-extrabold text-xs transition-all ${
+                className={`min-h-[44px] px-4 rounded-xl font-heading font-extrabold text-xs transition-all active:scale-95 ${
                   mediaView === "strip"
                     ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
                     : "text-sweet-muted hover:text-sweet-text"
                 }`}
               >
-                Strip Foto ♡
+                Strip Foto
               </button>
               <button
                 type="button"
                 aria-pressed={mediaView === "gif"}
                 onClick={() => setMediaView("gif")}
-                className={`min-h-[36px] px-4 rounded-full font-heading font-extrabold text-xs transition-all ${
+                className={`min-h-[44px] px-4 rounded-xl font-heading font-extrabold text-xs transition-all active:scale-95 ${
                   mediaView === "gif"
                     ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
                     : "text-sweet-muted hover:text-sweet-text"
                 }`}
               >
-                Boomerang GIF ✨
+                Boomerang GIF
               </button>
             </div>
           )}
 
           {(finalImageUrl || gifImageUrl) && (
-            <div className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white/85 backdrop-blur-md border-2 border-white/90 shadow-sweet-strip animate-float-strip-2 transition-all duration-300">
+            <div
+              key={mediaView}
+              className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white border-2 border-[#F3E6EE] shadow-sweet-strip animate-spring-swap transition-all duration-300"
+            >
               <img
                 src={
                   mediaView === "gif" && gifImageUrl
@@ -124,16 +104,18 @@ export function CompletionScreen({
                     ? "Hasil animasi Boomerang GIF Sweet Studio"
                     : "Hasil akhir cetakan foto Sweet Studio"
                 }
-                className="max-h-[68dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
+                width={600}
+                height={900}
+                className="max-h-[66dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
               />
-              <div className="absolute -top-3 -right-3 size-11 rounded-full bg-gradient-to-tr from-[#FBCFE8] via-[#F472B6] to-[#EC4899] flex items-center justify-center text-white shadow-sweet animate-bounce">
+              <div className="absolute -top-3 -right-3 size-11 rounded-full bg-[#DB2777] flex items-center justify-center text-white shadow-sweet">
                 <HeartIcon className="size-6 fill-white" />
               </div>
             </div>
           )}
         </div>
 
-        {/* Kolom Kanan: Glassmorphic Card "THANK YOU!" */}
+        {/* Kolom Kanan: Action Card "THANK YOU!" */}
         <div className="lg:col-span-7 flex flex-col justify-center animate-container-right">
           <Card
             variant="glass"
@@ -141,19 +123,14 @@ export function CompletionScreen({
             className="w-full flex flex-col items-center text-center space-y-6 shadow-sweet-card"
           >
             <div className="space-y-2">
-              <div className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full bg-white/80 border border-white/90 shadow-xs text-xs font-heading font-extrabold text-[#F472B6]">
-                <SparkleIcon className="size-4" />
-                <span>MEMORIES CAPTURED</span>
-                <SparkleIcon className="size-4" />
-              </div>
               <h1
                 id="completion-heading"
                 className="font-heading font-extrabold text-3xl sm:text-5xl text-[#3F3D56] tracking-wide"
               >
-                THANK YOU! ♡
+                THANK YOU!
               </h1>
               <p className="text-sm sm:text-base text-sweet-muted font-heading font-semibold max-w-md mx-auto">
-                Hope you love your memories! Jangan lupa ambil hasil cetakanmu di tray printer ya ✨
+                Hope you love your memories! Jangan lupa ambil hasil cetakanmu di tray printer.
               </p>
             </div>
 
@@ -163,7 +140,7 @@ export function CompletionScreen({
                 size="lg"
                 leftIcon={<QrIcon className="size-6 text-white" />}
                 onClick={() => setQrOpen(true)}
-                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold shadow-sweet-strip rounded-full active:scale-95 transition-all duration-300"
+                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold shadow-sweet-strip rounded-full animate-pulse-cta active:scale-95 transition-all duration-300"
               >
                 Tampilkan Kode QR
               </Button>
@@ -172,16 +149,16 @@ export function CompletionScreen({
                 variant="surface"
                 size="lg"
                 onClick={onStartAgain}
-                rightIcon={<FlowerIcon className="size-6 text-[#F472B6]" />}
-                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold rounded-full border-2 border-white/80 active:scale-95 transition-all duration-300"
+                rightIcon={<FlowerIcon className="size-6 text-sweet-primaryStrong" />}
+                className="w-full sm:flex-1 min-h-[64px] text-lg font-heading font-extrabold rounded-full border-2 border-[#F3E6EE] active:scale-95 transition-all duration-300"
               >
                 START AGAIN
               </Button>
             </div>
 
-            <p className="text-xs sm:text-sm font-heading font-bold text-sweet-muted flex items-center justify-center gap-1.5 pt-1">
-              <span>See you next time ✿</span>
-              <span>• Kembali otomatis dalam <strong className="text-[#F472B6]">{secondsLeft}s</strong></span>
+            <p className="text-xs sm:text-sm font-heading font-bold text-sweet-muted flex items-center justify-center gap-1.5 pt-1 mx-auto">
+              <span>See you next time</span>
+              <span>• Kembali otomatis dalam <strong className="text-sweet-primaryStrong">{secondsLeft}s</strong></span>
             </p>
           </Card>
         </div>

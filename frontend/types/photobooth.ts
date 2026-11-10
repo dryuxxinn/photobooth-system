@@ -181,4 +181,5 @@ export interface BoothOperatorConfig {
   isMirrored?: boolean;
   defaultFilter?: string;
   defaultArPreset?: string;
+  welcomeScreenMode?: "static" | "live_preview";
 }

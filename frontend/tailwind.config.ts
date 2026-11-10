@@ -11,17 +11,17 @@ const config: Config = {
     extend: {
       colors: {
         sweet: {
-          bg: "#FFF9F2",
+          bg: "#FFF5F7",
           surface: "#FFFFFF",
           primary: "#FBCFE8",
-          primaryStrong: "#F472B6",
+          primaryStrong: "#DB2777",
           secondary: "#DCD6F7",
           softPink: "#FFE5EC",
           peach: "#FFF0F0",
           lilac: "#F3E8FF",
           text: "#3F3D56",
-          muted: "#7A7893",
-          success: "#54866A",
+          muted: "#5C5A72",
+          success: "#047857",
           error: "#B84C58",
           border: "#F3E6EE",
           blush: "#FFF0F5",
@@ -53,11 +53,10 @@ const config: Config = {
       },
       boxShadow: {
         sweet:
-          "0 10px 25px -8px rgba(244, 114, 182, 0.25), 0 4px 10px -2px rgba(63, 61, 86, 0.06)",
+          "0 8px 20px -6px rgba(63, 61, 86, 0.06), 0 2px 6px -1px rgba(244, 114, 182, 0.08)",
         sweetLg:
-          "0 20px 35px -10px rgba(244, 114, 182, 0.32), 0 8px 16px -4px rgba(63, 61, 86, 0.08)",
-        glow:
-          "0 0 25px 4px rgba(244, 114, 182, 0.45)",
+          "0 20px 40px -12px rgba(63, 61, 86, 0.14), 0 8px 20px -6px rgba(244, 114, 182, 0.20)",
+        glow: "0 0 0 3px rgba(244, 114, 182, 0.35)",
       },
     },
   },

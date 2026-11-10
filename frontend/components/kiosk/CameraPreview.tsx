@@ -93,15 +93,20 @@ export function CameraPreview({
   const serverLiveFrameUrl = `${getApiBaseUrl()}/camera/preview-frame?t=${serverPreviewTick}`;
   const isCapture = isCaptureCardDevice(deviceLabel);
 
+  const maxDimClass =
+    mode === "capturing"
+      ? "max-w-[calc(85dvh*1.5)] max-h-[85dvh]"
+      : "max-w-[calc(78dvh*1.5)] max-h-[78dvh]";
+
   return (
     <div className={`w-full flex flex-col items-center justify-center gap-2.5 ${className || "max-w-xl md:max-w-2xl"}`}>
       {/* Main 3:2 Camera Viewport */}
-      <div className={`relative w-full max-w-[calc(76dvh*1.5)] aspect-[3/2] max-h-[76dvh] rounded-[2.5rem] bg-sweet-surface border-4 border-white/90 shadow-sweetLg overflow-hidden flex flex-col items-center justify-center ${containerClassName}`}>
+      <div className={`relative w-full ${maxDimClass} aspect-[3/2] rounded-[2.5rem] bg-sweet-surface border-4 border-white/90 shadow-sweetLg overflow-hidden flex flex-col items-center justify-center ${containerClassName}`}>
         {/* Top Status Overlay inside Camera Frame */}
         <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
           {isUsingWebcam ? (
-            <div className="px-3.5 py-1.5 rounded-full bg-emerald-500/90 text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm">
-              <span className="size-2 rounded-full bg-white animate-ping" />
+            <div className="px-3.5 py-1.5 rounded-full bg-[#54866A]/90 text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm">
+              <span className="size-2 rounded-full bg-white" />
               <span>
                 {streamReady
                   ? isCapture
@@ -111,8 +116,8 @@ export function CameraPreview({
               </span>
             </div>
           ) : (
-            <div className={`px-3.5 py-1.5 rounded-full ${serverCameraReady ? "bg-purple-600/90" : "bg-rose-500/90"} text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm`}>
-              <span className="size-2 rounded-full bg-white animate-ping" />
+            <div className={`px-3.5 py-1.5 rounded-full ${serverCameraReady ? "bg-[#3F3D56]/90" : "bg-[#B84C58]/90"} text-white backdrop-blur-md border border-white/60 text-xs font-heading font-extrabold flex items-center gap-2 shadow-sm`}>
+              <span className="size-2 rounded-full bg-white" />
               <span>
                 {serverCameraReady
                   ? cameraStatus?.driver === "wifi"
@@ -123,12 +128,16 @@ export function CameraPreview({
             </div>
           )}
 
-          <div className="px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-white/90 text-xs font-heading font-extrabold text-[#3F3D56] flex items-center gap-1.5 shadow-sm">
+          <div className="px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-white/90 text-xs font-heading font-extrabold text-[#3F3D56] flex items-center gap-1.5 shadow-sm">
             <CameraIcon className="size-3.5 text-[#F472B6]" />
             <span>
               {mode === "preparation"
                 ? `Sesi 6 Pose • Frame ${photosRequired} Slot`
-                : `Foto ${Math.min(photosTaken + 1, 6)} dari 6 Pose`}
+                : `Foto ${
+                    isReviewing
+                      ? Math.max(1, photosTaken)
+                      : Math.min(photosTaken + 1, 6)
+                  } dari 6 Pose`}
             </span>
           </div>
         </div>
@@ -137,6 +146,8 @@ export function CameraPreview({
         {isUsingWebcam && (
           <video
             ref={attachVideoRef}
+            width={1800}
+            height={1200}
             autoPlay
             playsInline
             muted
@@ -154,26 +165,26 @@ export function CameraPreview({
               aria-hidden="true"
               className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10"
             >
-              {/* Dynamic Status Pill positioned at Top (safely above the head, never covers chin/face) */}
-              <div className="absolute top-14 inset-x-4 flex items-center justify-center pointer-events-none">
+              {/* Dynamic Status Pill positioned at bottom-4 so it never collides with top HUD or camera text */}
+              <div className="absolute bottom-4 inset-x-4 flex items-center justify-center pointer-events-none">
                 <div
                   className={`px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] font-heading font-extrabold flex items-center gap-1.5 shadow-sm transition-all duration-300 ${
                     faceGuideStatus === "ready"
-                      ? "bg-emerald-500/90 text-white border-white/60 animate-sticker-pop"
-                      : "bg-[#3F3D56]/80 text-white border-white/40"
+                      ? "bg-[#047857]/90 text-white border-white/60 animate-sticker-pop"
+                      : "bg-[#3F3D56]/85 text-white border-white/40"
                   }`}
                 >
                   <span
                     className={`size-2 rounded-full ${
                       faceGuideStatus === "ready"
-                        ? "bg-white animate-ping"
-                        : "bg-[#F472B6] animate-pulse"
+                        ? "bg-white"
+                        : "bg-[#F472B6]"
                     }`}
                   />
                   <span>
                     {faceGuideStatus === "ready"
-                      ? "Wajah Terdeteksi • Looking Good ♡"
-                      : "✦ Posisikan Wajah di Area Tengah ✦"}
+                      ? "Wajah Terdeteksi • Siap Memotret"
+                      : "Posisikan Wajah di Area Tengah"}
                   </span>
                 </div>
               </div>
@@ -220,6 +231,8 @@ export function CameraPreview({
             <img
               src={latestSrc}
               alt={`Hasil foto ke-${latestPhoto?.index || photosTaken}`}
+              width={1800}
+              height={1200}
               style={{ filter: filterCss || "none" }}
               className="w-full h-full object-cover"
             />
@@ -235,11 +248,13 @@ export function CameraPreview({
               <img
                 src={latestSrc}
                 alt={`Foto terakhir #${latestPhoto?.index || photosTaken}`}
+                width={120}
+                height={80}
                 style={{ filter: filterCss || "none" }}
                 className="w-20 h-14 object-cover rounded-xl"
               />
               <span className="pr-2 font-heading font-bold text-xs text-sweet-text">
-                #{latestPhoto?.index || photosTaken} Tersimpan ✓
+                #{latestPhoto?.index || photosTaken} Tersimpan
               </span>
             </div>
           )}
@@ -251,6 +266,8 @@ export function CameraPreview({
               <img
                 src={serverLiveFrameUrl}
                 alt="Live View Kamera DSLR / Server"
+                width={1800}
+                height={1200}
                 style={{ filter: filterCss || "none" }}
                 onError={() => setServerPreviewFailed(true)}
                 className="w-full h-full object-cover transition-all duration-300"
@@ -268,8 +285,8 @@ export function CameraPreview({
                   </div>
                   <span className="font-heading font-bold text-sm text-sweet-text px-2">
                     {mode === "preparation"
-                      ? "Posisi Berdiri & Senyum Manis ♡"
-                      : "Lihat ke Lensa Kamera ✨"}
+                      ? "Posisi Berdiri & Senyum Manis"
+                      : "Lihat ke Lensa Kamera"}
                   </span>
                 </div>
 
@@ -282,7 +299,7 @@ export function CameraPreview({
                       <button
                         type="button"
                         onClick={onRetryWebcam}
-                        className="min-h-[38px] px-4 py-1.5 rounded-full bg-sweet-blush hover:bg-sweet-primary text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors"
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-blush hover:bg-sweet-primary text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors"
                       >
                         <RefreshIcon className="size-3.5" />
                         <span>Izinkan / Coba Ulang Kamera Perangkat</span>

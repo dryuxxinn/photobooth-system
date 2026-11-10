@@ -423,7 +423,7 @@ export function LayoutMock({
                     fontWeight="700"
                     opacity={0.7}
                   >
-                    {`POSE ${slot.poseIndex + 1} ♡`}
+                    {`POSE ${slot.poseIndex + 1}`}
                   </text>
                 </g>
               )}
@@ -695,10 +695,10 @@ export function LayoutMock({
             x={spec.width - 235}
             y={205}
             fill="#761624"
-            fontSize={28}
+            fontSize={24}
             fontWeight="800"
           >
-            ★ ★ ★ ★ ★
+            CINEMA EDITION
           </text>
         </g>
       ) : (
@@ -725,7 +725,7 @@ export function LayoutMock({
             fontWeight="800"
             letterSpacing="3"
           >
-            {`✦ ${title.slice(0, 18)} ✦`}
+            {title.slice(0, 18)}
           </text>
           <text
             x={spec.width / 2}
@@ -735,7 +735,7 @@ export function LayoutMock({
             fontSize={Math.max(20, spec.width * 0.02)}
             fontWeight="600"
           >
-            a little moment, a lovely memory ♡
+            a little moment, a lovely memory
           </text>
         </g>
       )}

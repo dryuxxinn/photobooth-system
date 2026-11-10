@@ -8,30 +8,34 @@ export type WebcamFacingMode = "user" | "environment";
 
 export function isCaptureCardDevice(label: string = ""): boolean {
   const l = label.toLowerCase();
+  // Don't misclassify standard laptop or USB webcams as capture cards
+  if (l.includes("webcam") || l.includes("integrated") || l.includes("facetime") || l.includes("laptop")) {
+    return false;
+  }
   return (
     l.includes("usb video") ||
     l.includes("capture") ||
     l.includes("cam link") ||
     l.includes("hdmi") ||
-    l.includes("uvc") ||
-    l.includes("external") ||
-    l.includes("fhd capture")
+    l.includes("fhd capture") ||
+    l.includes("ezcap") ||
+    l.includes("elgato")
   );
 }
 
 export function formatCameraLabel(device: MediaDeviceInfo, index: number): string {
   const label = device.label || "";
   if (isCaptureCardDevice(label)) {
-    return `🎥 ${label || "Capture Card / USB Video"}`;
+    return `[HDMI/Capture] ${label || "Capture Card / USB Video"}`;
   }
   const l = label.toLowerCase();
   if (l.includes("front") || l.includes("user") || l.includes("facetime") || l.includes("depan")) {
-    return `🤳 Kamera Depan`;
+    return "Kamera Depan";
   }
   if (l.includes("back") || l.includes("environment") || l.includes("rear") || l.includes("belakang")) {
-    return `📷 Kamera Belakang`;
+    return "Kamera Belakang";
   }
-  return label ? `📷 ${label}` : `Kamera ${index + 1}`;
+  return label ? label : `Kamera ${index + 1}`;
 }
 
 interface UseWebcamOptions {

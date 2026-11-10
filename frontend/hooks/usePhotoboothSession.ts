@@ -47,7 +47,7 @@ export function usePhotoboothSession() {
   const [frameThemes, setFrameThemes] =
     useState<FrameThemeOption[]>(DEFAULT_FRAME_THEMES);
   const [operatorConfig, setOperatorConfig] = useState<BoothOperatorConfig>(
-    DEFAULT_OPERATOR_CONFIG
+    () => (typeof window !== "undefined" ? loadOperatorConfig() : DEFAULT_OPERATOR_CONFIG)
   );
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateOption>(
@@ -73,7 +73,12 @@ export function usePhotoboothSession() {
   const [politeMessage, setPoliteMessage] = useState<string>("");
   const [assertiveMessage, setAssertiveMessage] = useState<string>("");
 
+  const isLivePreviewWelcome =
+    kioskStep === "WELCOME" &&
+    (operatorConfig.welcomeScreenMode ?? "live_preview") === "live_preview";
+
   const webcamActive =
+    isLivePreviewWelcome ||
     kioskStep === "PREPARATION" ||
     kioskStep === "CAPTURING" ||
     state === "STARTED" ||

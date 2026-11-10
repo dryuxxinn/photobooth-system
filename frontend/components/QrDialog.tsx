@@ -85,7 +85,7 @@ export function QrDialog({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Unduh Foto & Boomerang GIF ♡"
+      title="Unduh Foto & Boomerang GIF"
       subtitle="Pindai kode QR menggunakan kamera ponsel untuk membuka Galeri Digital (Strip + GIF + Semua Pose)."
       maxWidthClass="max-w-lg"
     >
@@ -94,25 +94,25 @@ export function QrDialog({
         <div
           role="group"
           aria-label="Target tautan kode QR"
-          className="inline-flex flex-wrap items-center justify-center p-1 rounded-full bg-sweet-bg border border-sweet-border gap-1 w-full"
+          className="inline-flex flex-wrap items-center justify-center p-1 rounded-2xl bg-sweet-bg border border-sweet-border gap-1 w-full"
         >
           <button
             type="button"
             aria-pressed={qrMode === "gallery"}
             onClick={() => setQrMode("gallery")}
-            className={`min-h-[38px] flex-1 px-3 py-1 rounded-full font-heading font-extrabold text-xs transition-all ${
+            className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl font-heading font-extrabold text-xs transition-all ${
               qrMode === "gallery"
                 ? "bg-sweet-primary text-sweet-text shadow-xs"
                 : "text-sweet-muted hover:text-sweet-text"
             }`}
           >
-            Galeri Lengkap ✨
+            Galeri Lengkap
           </button>
           <button
             type="button"
             aria-pressed={qrMode === "strip"}
             onClick={() => setQrMode("strip")}
-            className={`min-h-[38px] flex-1 px-3 py-1 rounded-full font-heading font-extrabold text-xs transition-all ${
+            className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl font-heading font-extrabold text-xs transition-all ${
               qrMode === "strip"
                 ? "bg-sweet-primary text-sweet-text shadow-xs"
                 : "text-sweet-muted hover:text-sweet-text"
@@ -125,7 +125,7 @@ export function QrDialog({
               type="button"
               aria-pressed={qrMode === "gif"}
               onClick={() => setQrMode("gif")}
-              className={`min-h-[38px] flex-1 px-3 py-1 rounded-full font-heading font-extrabold text-xs transition-all ${
+              className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl font-heading font-extrabold text-xs transition-all ${
                 qrMode === "gif"
                   ? "bg-sweet-primary text-sweet-text shadow-xs"
                   : "text-sweet-muted hover:text-sweet-text"

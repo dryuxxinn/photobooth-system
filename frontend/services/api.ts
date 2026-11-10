@@ -214,16 +214,33 @@ export const photoboothApi = {
   createQrisPayment: (amount: number = 35000, packageName?: string) =>
     request<{
       transaction_id: string;
+      invoice_number?: string;
       amount: number;
       package_name: string;
       qr_string: string;
-      status: "PENDING" | "PAID";
+      status: "PENDING" | "PAID" | "FAILED";
       created_at: string;
       paid_at?: string | null;
+      provider?: string;
+      is_simulated?: boolean;
     }>("/session/payment/qris", {
       method: "POST",
       body: JSON.stringify({ amount, package_name: packageName }),
     }),
+
+  getQrisPaymentStatus: (transactionId: string) =>
+    request<{
+      transaction_id: string;
+      invoice_number?: string;
+      amount: number;
+      package_name: string;
+      qr_string: string;
+      status: "PENDING" | "PAID" | "FAILED";
+      created_at: string;
+      paid_at?: string | null;
+      provider?: string;
+      is_simulated?: boolean;
+    }>(`/session/payment/qris/${encodeURIComponent(transactionId)}`),
 
   confirmQrisPayment: (transactionId: string) =>
     request<{

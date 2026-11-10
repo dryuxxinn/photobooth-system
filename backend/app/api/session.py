@@ -1,7 +1,8 @@
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from backend.app.core.config import settings
 from backend.app.schemas.session import (
     CapturePhotoRequest,
@@ -19,6 +20,7 @@ from backend.app.services.session import get_session_manager, SessionTransitionE
 from backend.app.services.camera import get_camera_service
 from backend.app.services.printer import get_printer_service
 from backend.app.services.storage.database import get_db_service
+from backend.app.services.payment import get_doku_service
 
 router = APIRouter(prefix="/session", tags=["Session"])
 
@@ -221,24 +223,19 @@ def sync_session_cloud_link(
 
 @router.post("/payment/qris")
 def create_qris_payment(payload: QrisCreateRequest = QrisCreateRequest()):
-    """Create a dynamic QRIS payment transaction for pay-per-session mode."""
-    tx_id = f"qris_{uuid.uuid4().hex[:10]}"
-    now = datetime.now(timezone.utc).isoformat()
-    qr_string = (
-        f"00020101021226580014ID.CO.QRIS.WWW0118936009143{tx_id.upper()}"
-        f"520458125303360540{payload.amount}5802ID5912SWEET STUDIO6007JAKARTA6304ABCD"
+    """Create a dynamic QRIS payment transaction via DOKU API with simulation fallback."""
+    doku = get_doku_service()
+    tx = doku.generate_qris(
+        amount=payload.amount,
+        package_name=payload.package_name or "Sweet Studio Photobooth",
     )
-    record = {
-        "transaction_id": tx_id,
-        "amount": payload.amount,
-        "package_name": payload.package_name or "Sweet Studio Session",
-        "qr_string": qr_string,
-        "status": "PENDING",
-        "created_at": now,
-        "paid_at": None,
-    }
-    _qris_transactions[tx_id] = record
-    return record
+    tx_id = tx["transaction_id"]
+    _qris_transactions[tx_id] = tx
+    # Also index by invoice number if distinct
+    inv = tx.get("invoice_number")
+    if inv and inv != tx_id:
+        _qris_transactions[inv] = tx
+    return tx
 
 
 @router.get("/payment/qris/{transaction_id}")
@@ -266,6 +263,62 @@ def confirm_qris_payment(transaction_id: str):
     return record
 
 
+@router.post("/payment/doku/notify")
+async def handle_doku_notification(request: Request):
+    """
+    DOKU Payment Gateway Webhook notification endpoint.
+    Triggered when customer successfully scans and pays via Dynamic QRIS.
+    """
+    body_bytes = await request.body()
+    headers = dict(request.headers)
+
+    doku = get_doku_service()
+    is_valid, reason = doku.verify_webhook_signature(
+        headers, body_bytes, target_path="/session/payment/doku/notify"
+    )
+    if not is_valid and doku.is_configured:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"DOKU signature verification failed: {reason}",
+        )
+
+    try:
+        payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload from DOKU webhook.",
+        )
+
+    order_info = payload.get("order", {})
+    invoice_number = order_info.get("invoice_number") or payload.get("transaction", {}).get("invoice_number")
+    transaction_info = payload.get("transaction", {})
+    trx_status = (transaction_info.get("status") or "").upper()
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    record = _qris_transactions.get(invoice_number) if invoice_number else None
+
+    if record:
+        if trx_status in ("SUCCESS", "PAID"):
+            record["status"] = "PAID"
+            record["paid_at"] = now_iso
+            record["doku_raw_response"] = payload
+        elif trx_status in ("FAILED", "EXPIRED"):
+            record["status"] = "FAILED"
+    elif invoice_number:
+        # If record was not in memory, save it directly
+        _qris_transactions[invoice_number] = {
+            "transaction_id": invoice_number,
+            "invoice_number": invoice_number,
+            "amount": order_info.get("amount", 0),
+            "status": "PAID" if trx_status in ("SUCCESS", "PAID") else "FAILED",
+            "paid_at": now_iso,
+            "doku_raw_response": payload,
+        }
+
+    return {"status": "SUCCESS", "message": "DOKU notification processed successfully."}
+
+
 @router.post("/payment/voucher")
 def verify_voucher_code(payload: VoucherVerifyRequest):
     """Verify a cashier or event voucher code for starting a session."""
@@ -280,7 +333,7 @@ def verify_voucher_code(payload: VoucherVerifyRequest):
         return {
             "valid": True,
             "code": normalized,
-            "message": "Kode voucher valid! Selamat berfoto ♡",
+            "message": "Kode voucher valid! Selamat berfoto!",
         }
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { SessionDetail } from "@/types/photobooth";
 import { resolveStorageUrl } from "@/services/api";
 import { Card } from "@/components/ui/Card";
@@ -23,9 +24,24 @@ export function SessionTable({ sessions }: SessionTableProps) {
       </div>
 
       {sessions.length === 0 ? (
-        <p className="text-sm text-sweet-muted py-6 text-center">
-          Belum ada riwayat sesi foto hari ini.
-        </p>
+        <div className="py-8 px-4 rounded-2xl bg-sweet-bg border border-sweet-border text-center space-y-3">
+          <div className="space-y-1">
+            <p className="font-heading font-extrabold text-sm text-sweet-text">
+              Belum ada riwayat sesi foto yang tercatat
+            </p>
+            <p className="text-xs text-sweet-muted max-w-md mx-auto">
+              Database lokal belum menerima sesi pemotretan baru hari ini. Mulai sesi pertama dari layar utama untuk melihat riwayat foto dan status cetak di sini.
+            </p>
+          </div>
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center min-h-[44px] px-5 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong hover:text-white text-sweet-text font-heading font-extrabold text-xs border-2 border-sweet-primaryStrong/40 transition-colors"
+            >
+              Buka Layar Kiosk untuk Memulai Sesi
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">

@@ -70,10 +70,10 @@ export function PhotoSelection({
   return (
     <section
       aria-labelledby="photo-select-heading"
-      className="flex-1 min-h-0 flex flex-col justify-between px-4 sm:px-6 py-4 overflow-y-auto kiosk-scroll animate-screen-fade"
+      className="flex-1 min-h-0 flex flex-col justify-between px-4 sm:px-6 py-3 overflow-hidden animate-screen-fade"
     >
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 max-w-5xl w-full mx-auto">
+      <div className="flex items-center justify-between gap-4 max-w-5xl w-full mx-auto shrink-0">
         <StatusBadge tone="pink">
           Frame: {template.name} ({maxPhotos} Slot)
         </StatusBadge>
@@ -81,12 +81,12 @@ export function PhotoSelection({
         <div className="text-center">
           <h1
             id="photo-select-heading"
-            className="font-heading font-extrabold text-2xl md:text-3xl text-sweet-text flex items-center justify-center gap-2"
+            className="font-heading font-extrabold text-xl md:text-2xl text-sweet-text flex items-center justify-center gap-2"
           >
             <span>PILIH {maxPhotos} FOTO TERBAIK</span>
-            <HeartIcon className="size-6 text-sweet-primaryStrong" />
+            <HeartIcon className="size-5 text-sweet-primaryStrong" />
           </h1>
-          <p className="text-xs md:text-sm text-sweet-muted">
+          <p className="text-xs text-sweet-muted mx-auto">
             Sentuh foto untuk memilih posisi urutan slot ({selectedIds.length} dari {maxPhotos} terpilih)
           </p>
         </div>
@@ -96,18 +96,19 @@ export function PhotoSelection({
         </StatusBadge>
       </div>
 
-      {/* 6 Photos in 3x2 Grid */}
+      {/* 6 Photos in 3x2 Grid with Staggered Domino Entrance */}
       <div
         role="group"
         aria-label="Pilih foto terbaik untuk frame"
-        className="grid grid-cols-2 md:grid-cols-3 gap-3.5 max-w-5xl w-full mx-auto my-3 animate-container-card"
+        className="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 gap-3 max-w-5xl w-full mx-auto my-2"
       >
-        {session.photos.map((photo) => {
+        {session.photos.map((photo, idx) => {
           const slotIndex = selectedIds.indexOf(photo.id);
           const isSelected = slotIndex !== -1;
           const src = resolveStorageUrl(
             photo.preview_url || photo.thumbnail_url || photo.original_url
           );
+          const staggerClass = `stagger-${Math.min(idx + 1, 6)}`;
 
           return (
             <button
@@ -115,49 +116,51 @@ export function PhotoSelection({
               type="button"
               aria-pressed={isSelected}
               onClick={() => handleTogglePhoto(photo.id)}
-              className={`group relative rounded-3xl overflow-hidden border-4 transition-all text-left bg-sweet-surface shadow-sweet ${
+              className={`group relative rounded-3xl overflow-hidden border-3 transition-all text-left bg-sweet-surface shadow-sweet flex flex-col justify-between min-h-0 stagger-item ${staggerClass} ${
                 isSelected
-                  ? "border-sweet-primaryStrong ring-4 ring-sweet-primary/50 scale-[1.01]"
-                  : "border-sweet-border opacity-70 hover:opacity-95"
+                  ? "border-sweet-primaryStrong ring-3 ring-sweet-primary/50 scale-[1.01]"
+                  : "border-sweet-border opacity-75 hover:opacity-100"
               }`}
             >
-              <div className="aspect-[3/2] w-full bg-sweet-blush overflow-hidden relative">
+              <div className="flex-1 min-h-0 w-full bg-sweet-blush overflow-hidden relative">
                 {src && (
                   <img
                     src={src}
                     alt={`Foto pose ke-${photo.index}`}
+                    width={600}
+                    height={400}
                     style={{ filter: getFilterCss(session.filter_name || undefined) }}
-                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                   />
                 )}
 
                 {/* Slot Order Badge overlay on image */}
                 {isSelected ? (
-                  <div className="absolute top-2.5 left-2.5 px-3 py-1 rounded-full bg-sweet-primaryStrong text-white font-heading font-extrabold text-sm shadow-sweet flex items-center gap-1.5 animate-sticker-pop">
+                  <div className="absolute top-2.5 left-2.5 px-3 py-1 rounded-full bg-sweet-primaryStrong text-white font-heading font-extrabold text-xs shadow-sweet flex items-center gap-1.5 animate-sticker-pop">
                     <CheckIcon className="size-3.5 stroke-[3]" />
                     <span>Slot #{slotIndex + 1}</span>
                   </div>
                 ) : (
-                  <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-sweet-text/40 text-white font-heading font-bold text-xs backdrop-blur-xs">
+                  <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#3F3D56]/75 text-white font-heading font-bold text-xs">
                     Pose #{photo.index}
                   </div>
                 )}
               </div>
 
-              <div className="p-3 flex items-center justify-between bg-sweet-surface">
+              <div className="px-3 py-2 flex items-center justify-between bg-sweet-surface shrink-0">
                 <div>
-                  <span className="font-heading font-bold text-xs sm:text-sm text-sweet-text block">
+                  <span className="font-heading font-bold text-xs text-sweet-text block">
                     Pose #{photo.index}
                   </span>
-                  <span className="text-[11px] text-sweet-muted">
+                  <span className="text-[10px] text-sweet-muted block">
                     {isSelected
-                      ? `Urutan ke-${slotIndex + 1} di frame ♡`
+                      ? `Urutan ke-${slotIndex + 1} di frame`
                       : "Sentuh untuk pilih"}
                   </span>
                 </div>
 
                 <div
-                  className={`size-8 rounded-full flex items-center justify-center font-heading font-extrabold text-sm transition-colors ${
+                  className={`size-7 rounded-full flex items-center justify-center font-heading font-extrabold text-xs transition-colors ${
                     isSelected
                       ? "bg-sweet-primaryStrong text-white shadow-xs"
                       : "bg-sweet-blush text-sweet-primaryStrong border border-sweet-primary"
@@ -172,22 +175,22 @@ export function PhotoSelection({
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="max-w-md w-full mx-auto flex flex-col items-center gap-2">
+      <div className="max-w-md w-full mx-auto flex flex-col items-center gap-1.5 shrink-0">
         <Button
           variant="strong"
           size="xl"
           disabled={!isComplete}
           onClick={() => onContinue(selectedIds)}
           rightIcon={<ArrowRightIcon className="size-6 text-white" />}
-          className="w-full min-h-[66px] text-lg sm:text-xl shadow-sweetLg disabled:opacity-50"
+          className="w-full min-h-[58px] text-lg sm:text-xl disabled:opacity-50 animate-pulse-cta"
         >
           {isComplete
-            ? "PASANG KE FRAME ➔"
+            ? "PASANG KE FRAME"
             : `PILIH ${maxPhotos - selectedIds.length} FOTO LAGI`}
         </Button>
-        <p className="text-xs text-sweet-muted text-center">
+        <p className="text-[11px] text-sweet-muted text-center mx-auto">
           {isComplete
-            ? "Kamu tetap bisa mengubah desain frame dan warnanya di langkah berikutnya! ✨"
+            ? "Kamu tetap bisa mengubah desain frame dan warnanya di langkah berikutnya."
             : `Pilih tepat ${maxPhotos} foto untuk mengisi seluruh slot frame ${template.name}.`}
         </p>
       </div>

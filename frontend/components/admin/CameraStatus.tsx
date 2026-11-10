@@ -136,7 +136,9 @@ export function CameraStatus({ cameraStatus, onRefresh }: CameraStatusProps) {
         <div className="flex justify-between">
           <dt className="text-sweet-muted">Baterai:</dt>
           <dd className="font-bold text-sweet-text">
-            {cameraStatus?.battery_level ?? 100}%
+            {cameraStatus?.battery_level != null
+              ? `${cameraStatus.battery_level}%`
+              : "AC / USB Power"}
           </dd>
         </div>
         <div className="flex justify-between gap-2">

@@ -182,7 +182,12 @@ export function Dashboard() {
                     }`}
                   >
                     <span>{item.label}</span>
-                    {active && <span aria-hidden="true">♡</span>}
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="size-2 rounded-full bg-sweet-primaryStrong"
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -229,14 +234,16 @@ export function Dashboard() {
                     <h3 className="font-heading font-bold text-sm text-sweet-text">
                       STORAGE
                     </h3>
-                    <StatusBadge tone="pink">
-                      {health?.storage_used_percent ?? 12}% Used
+                    <StatusBadge tone={health ? "pink" : "neutral"}>
+                      {health
+                        ? `${health.storage_used_percent}% Terpakai`
+                        : "Belum Terukur"}
                     </StatusBadge>
                   </div>
                   <p className="text-xs text-sweet-muted">
                     Ruang bebas disk lokal:{" "}
                     <strong className="text-sweet-text">
-                      {health?.storage_free_gb ?? "-"} GB
+                      {health ? `${health.storage_free_gb} GB` : "Menunggu API"}
                     </strong>
                   </p>
                 </Card>

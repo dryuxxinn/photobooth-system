@@ -74,48 +74,34 @@ export function CountdownOverlay({
   return (
     <section
       aria-labelledby="capture-heading"
-      className="flex-1 min-h-0 flex flex-col items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3.5 overflow-y-auto kiosk-scroll relative"
+      className="flex-1 min-h-0 flex flex-col items-center justify-between px-3 sm:px-6 py-1.5 sm:py-2.5 overflow-hidden relative"
     >
-      {/* Dimmed focused background backdrop */}
-      <div className="fixed inset-0 bg-black/15 pointer-events-none z-0" />
-
-      {/* Top Pose Header with Unobstructed Timer */}
-      <div className="text-center space-y-1 z-10 w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto">
-        <div className="inline-flex items-center gap-3 sm:gap-4 px-6 sm:px-8 py-2 sm:py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-white/90 shadow-sweet">
+      {/* Top Pose Header */}
+      <div className="text-center space-y-0.5 z-10 w-full max-w-5xl mx-auto shrink-0">
+        <div className="inline-flex items-center gap-3 px-6 py-1.5 rounded-full bg-white/95 border-2 border-[#F3E6EE] shadow-sweet-card">
           <h1
             id="capture-heading"
-            className="font-heading font-extrabold text-2xl sm:text-3xl tracking-wider text-[#3F3D56]"
+            className="font-heading font-extrabold text-xl sm:text-2xl tracking-wider text-[#3F3D56]"
           >
             {isReviewing
               ? `PHOTO ${session.photos_taken} OF ${session.photos_required}`
               : `PHOTO ${currentPoseNumber} OF ${session.photos_required}`}
           </h1>
-
-          {/* Countdown Timer Badge in Header - NOT blocking the camera preview! */}
-          {countdown !== null && countdown > 0 && !isReviewing && (
-            <div
-              key={countdown}
-              className="px-4 py-1 sm:px-5 sm:py-1 rounded-full bg-gradient-to-r from-[#F472B6] to-[#EC4899] text-white font-heading font-extrabold text-2xl sm:text-3xl shadow-glow animate-bubble-pop flex items-center gap-2"
-            >
-              <span className="text-xl sm:text-2xl animate-pulse">⏱</span>
-              <span>{countdown}s</span>
-            </div>
-          )}
         </div>
-        <p className="text-xs sm:text-sm font-heading font-semibold text-sweet-muted flex items-center justify-center gap-1.5 pt-0.5">
+        <p className="text-xs font-heading font-semibold text-sweet-muted flex items-center justify-center gap-1.5 pt-0.5 mx-auto text-center">
           <span>
             {isReviewing
-              ? "Tinjau hasil foto — Pilih lanjut atau foto ulang ♡"
+              ? "Tinjau hasil foto: pilih lanjut atau foto ulang"
               : countdown !== null && countdown > 0
-              ? `Senyum manis ke kamera! Foto diambil dalam ${countdown} detik ✨`
-              : "Bersiap berpose! ♡"}
+              ? `Senyum manis ke kamera! Foto diambil dalam ${countdown} detik`
+              : "Bersiap berpose!"}
           </span>
-          <HeartIcon className="size-4 text-sweet-primaryStrong" />
+          <HeartIcon className="size-3.5 text-sweet-primaryStrong shrink-0" />
         </p>
       </div>
 
       {/* Main Focused Camera Preview Stage - Expanded to feel immersive / full screen */}
-      <div className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 z-10">
+      <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1450px] flex-1 min-h-0 flex flex-col items-center justify-center my-0.5 z-10">
         <CameraPreview
           cameraStatus={cameraStatus}
           latestPhoto={latestPhoto}
@@ -132,8 +118,27 @@ export function CountdownOverlay({
           attachVideoRef={attachVideoRef}
           onRetryWebcam={onRetryWebcam}
           filterCss={filterCss || (session.filter_name ? getFilterCss(session.filter_name) : "none")}
-          className="w-full h-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex flex-col items-center justify-center"
+          className="w-full h-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1450px] flex flex-col items-center justify-center"
         >
+          {/* Centered Glassmorphic Translucent Countdown HUD (Per User Mockup) */}
+          {countdown !== null && countdown > 0 && !isReviewing && (
+            <div
+              aria-live="assertive"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none"
+            >
+              <div
+                key={countdown}
+                className="size-32 sm:size-40 rounded-full bg-[#3F3D56]/40 backdrop-blur-md border-3 border-white/60 shadow-sweetLg flex flex-col items-center justify-center animate-bubble-pop"
+              >
+                <span className="font-heading font-black text-6xl sm:text-7xl text-white drop-shadow-md select-none tracking-tight">
+                  {countdown}
+                </span>
+                <span className="text-[11px] font-heading font-extrabold tracking-widest uppercase text-white/95 drop-shadow-xs -mt-1">
+                  SMILE!
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Capturing / Downloading confirmation state */}
           {(countdown === 0 || (isBusy && !captureError)) && !isReviewing && (
@@ -195,8 +200,8 @@ export function CountdownOverlay({
         </CameraPreview>
       </div>
 
-      {/* Bottom Progress Indicator & Action Strip */}
-      <div className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1400px] flex flex-col sm:flex-row items-center justify-between gap-3 z-10 px-2">
+      {/* Unified Glassmorphic Bottom Control Dock (Centered safely away from bottom-right HUD) */}
+      <div className="w-full max-w-4xl xl:max-w-5xl mx-auto p-2 sm:p-2.5 rounded-3xl bg-white/90 backdrop-blur-md border-2 border-[#F3E6EE] shadow-sweet-card flex flex-col sm:flex-row items-center justify-between gap-3 z-10">
         <ProgressIndicator
           current={session.photos_taken}
           total={session.photos_required}
@@ -204,13 +209,13 @@ export function CountdownOverlay({
         />
 
         {isReviewing ? (
-          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto animate-screen-fade">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto animate-screen-fade">
             {/* Auto-next Timer Badge */}
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border-2 border-[#F472B6] shadow-sweet">
-              <span className="size-2.5 rounded-full bg-[#F472B6] animate-ping" />
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#FFF0F5] border-2 border-[#FBCFE8]">
+              <span className="size-2.5 rounded-full bg-[#DB2777]" />
               <span className="font-heading font-extrabold text-xs sm:text-sm text-[#3F3D56]">
                 Foto #{session.photos_taken} Tersimpan • Auto-next:{" "}
-                <span className="text-[#F472B6] font-black">{reviewCountdown}s</span>
+                <span className="text-[#DB2777] font-black">{reviewCountdown}s</span>
               </span>
             </div>
 
@@ -222,9 +227,9 @@ export function CountdownOverlay({
                 onClick={onRetakeCurrent}
                 disabled={isBusy}
                 leftIcon={<RefreshIcon className="size-4 text-sweet-error" />}
-                className="min-h-[44px] px-4 rounded-full border-2 border-sweet-border hover:border-sweet-error text-sweet-text hover:text-sweet-error font-heading font-bold text-xs sm:text-sm active:scale-95 transition-all"
+                className="min-h-[44px] px-4 rounded-2xl border-2 border-sweet-border hover:border-sweet-error text-sweet-text hover:text-sweet-error font-heading font-bold text-xs sm:text-sm active:scale-95 transition-all"
               >
-                Foto Ulang ↺
+                Foto Ulang
               </Button>
               <Button
                 variant="strong"
@@ -232,25 +237,25 @@ export function CountdownOverlay({
                 onClick={onProceedNext}
                 disabled={isBusy}
                 rightIcon={<HeartIcon className="size-4 text-white" />}
-                className="min-h-[44px] px-5 sm:px-6 rounded-full font-heading font-extrabold text-xs sm:text-sm shadow-sweet active:scale-95 transition-all"
+                className="min-h-[44px] px-5 sm:px-6 rounded-2xl font-heading font-extrabold text-xs sm:text-sm active:scale-95 transition-all"
               >
                 {session.photos_taken >= session.photos_required
-                  ? `Selesai & Frame (${reviewCountdown}s) ➔`
-                  : `Lanjut (${reviewCountdown}s) ➔`}
+                  ? `Selesai & Frame (${reviewCountdown}s)`
+                  : `Lanjut (${reviewCountdown}s)`}
               </Button>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {onCaptureNow && countdown !== null && countdown > 0 && !isBusy && (
               <Button
                 variant="strong"
                 size="md"
                 onClick={onCaptureNow}
                 leftIcon={<CameraIcon className="size-4" />}
-                className="min-h-[44px] px-5 rounded-full font-heading font-extrabold text-xs sm:text-sm shadow-sweet"
+                className="min-h-[44px] px-5 rounded-2xl font-heading font-extrabold text-xs sm:text-sm"
               >
-                Jepret Sekarang 📸
+                Jepret Sekarang
               </Button>
             )}
             <Button

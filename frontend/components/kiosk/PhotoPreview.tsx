@@ -138,7 +138,7 @@ export function PhotoPreview({
       ) {
         await navigator.share({
           title: "Sweet Studio Photobooth",
-          text: "Kenangan manis dari Sweet Studio Photobooth ♡",
+          text: "Kenangan manis dari Sweet Studio Photobooth",
           files: [file],
         });
         setShareToast("Foto berhasil dibagikan!");
@@ -161,16 +161,18 @@ export function PhotoPreview({
     }
   };
 
+  const [quickTab, setQuickTab] = useState<"filter" | "ar">("filter");
+
   return (
     <section
       aria-labelledby="preview-heading"
-      className="flex-1 min-h-0 flex flex-col justify-between px-4 sm:px-8 py-4 overflow-y-auto kiosk-scroll animate-screen-fade relative"
+      className="flex-1 min-h-0 flex flex-col justify-between px-4 sm:px-8 py-3 overflow-hidden animate-screen-fade relative"
     >
       {/* Idle Timeout Warning Banner */}
       {secondsLeft <= PREVIEW_IDLE_WARN_SECONDS && (
         <div
           role="alert"
-          className="max-w-4xl w-full mx-auto mb-2 px-5 py-2.5 rounded-full bg-[#FCECEE] border-2 border-[#EABAC0] flex items-center justify-between gap-4 shadow-sweet z-30"
+          className="max-w-4xl w-full mx-auto mb-2 px-5 py-2 rounded-full bg-[#FCECEE] border-2 border-[#EABAC0] flex items-center justify-between gap-4 shadow-sweet z-30 shrink-0"
         >
           <div className="flex items-center gap-2.5 text-xs sm:text-sm font-heading font-bold text-sweet-error">
             <AlertIcon className="size-4 shrink-0" />
@@ -185,14 +187,17 @@ export function PhotoPreview({
       )}
 
       {/* Main 2-Column Side-by-Side Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center max-w-7xl w-full mx-auto my-auto py-2 z-10">
-        {/* Kolom Kiri: Live Photo Strip Preview (Large, Clean, No Massive Empty Box) */}
-        <div className="lg:col-span-6 xl:col-span-5 flex flex-col items-center justify-center animate-container-left">
-          <div className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white/85 backdrop-blur-md border-2 border-white/90 shadow-sweet-strip flex flex-col items-center justify-center transition-all duration-300">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center max-w-7xl w-full mx-auto my-auto py-1 z-10 flex-1 min-h-0">
+        {/* Kolom Kiri: Live Photo Strip Preview in 3D Antigravity Stage */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center animate-container-left antigravity-stage">
+          <div
+            key={`${viewTab}-${imageVersion}`}
+            className="relative group p-3.5 sm:p-4 rounded-[2.5rem] bg-white border-2 border-[#F3E6EE] shadow-sweet-strip flex flex-col items-center justify-center transition-all duration-300 animate-spring-swap"
+          >
             {isBusy && (
-              <div className="absolute inset-0 bg-sweet-surface/85 backdrop-blur-sm z-20 rounded-[2.5rem] flex flex-col items-center justify-center gap-3">
+              <div className="absolute inset-0 bg-sweet-surface/90 z-20 rounded-[2.5rem] flex flex-col items-center justify-center gap-3">
                 <SpinnerIcon className="size-10 text-sweet-primaryStrong animate-spin" />
-                <p className="font-heading font-extrabold text-sm text-sweet-text">
+                <p className="font-heading font-extrabold text-sm text-sweet-text mx-auto">
                   Memperbarui Komposisi Foto...
                 </p>
               </div>
@@ -205,11 +210,13 @@ export function PhotoPreview({
                   <img
                     src={compositeUrl}
                     alt="Hasil akhir komposisi photostrip siap cetak"
-                    className="max-h-[72dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
+                    width={600}
+                    height={900}
+                    className="max-h-[70dvh] w-auto object-contain rounded-2xl shadow-sweet border border-sweet-border"
                   />
                 ) : (
                   <div className="h-64 flex items-center justify-center">
-                    <p className="text-sm font-heading font-bold text-sweet-muted">
+                    <p className="text-sm font-heading font-bold text-sweet-muted mx-auto">
                       Memuat hasil komposisi foto...
                     </p>
                   </div>
@@ -224,15 +231,17 @@ export function PhotoPreview({
                     <img
                       src={gifUrl}
                       alt="Animasi Boomerang GIF sesi Sweet Studio"
-                      className="max-h-[64dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
+                      width={600}
+                      height={400}
+                      className="max-h-[62dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
                     />
                     <StatusBadge tone="pink">
-                      Boomerang GIF Otomatis • Siap Unduh via QR ✨
+                      Boomerang GIF Otomatis • Siap Unduh via QR
                     </StatusBadge>
                   </>
                 ) : (
                   <div className="h-64 flex items-center justify-center">
-                    <p className="text-sm font-heading font-bold text-sweet-muted">
+                    <p className="text-sm font-heading font-bold text-sweet-muted mx-auto">
                       Menyiapkan animasi Boomerang GIF...
                     </p>
                   </div>
@@ -249,7 +258,9 @@ export function PhotoPreview({
                       session.photos[slideIndex]?.original_url
                   )}
                   alt={`Slideshow pose ke-${slideIndex + 1}`}
-                  className="max-h-[62dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
+                  width={600}
+                  height={400}
+                  className="max-h-[60dvh] w-auto object-contain rounded-2xl shadow-sweet border-2 border-sweet-primary"
                 />
                 <div className="flex items-center gap-2.5 pt-1">
                   <Button
@@ -274,7 +285,7 @@ export function PhotoPreview({
             )}
 
             {viewTab === "originals" && (
-              <div className="grid grid-cols-2 gap-2.5 p-1 max-h-[68dvh] overflow-y-auto kiosk-scroll">
+              <div className="grid grid-cols-2 gap-2.5 p-1 max-h-[66dvh] overflow-y-auto kiosk-scroll">
                 {session.photos.map((p) => (
                   <div
                     key={p.id}
@@ -285,6 +296,8 @@ export function PhotoPreview({
                         p.preview_url || p.thumbnail_url || p.original_url
                       )}
                       alt={`Foto asli pose ke-${p.index}`}
+                      width={600}
+                      height={400}
                       className="w-full aspect-[3/2] object-cover"
                     />
                     <div className="px-2 py-1 text-[11px] font-heading font-bold text-sweet-text text-center bg-sweet-surface">
@@ -296,28 +309,28 @@ export function PhotoPreview({
             )}
 
             {/* Corner Decorative Heart Pin Badge */}
-            <div className="absolute -top-2 -right-2 size-9 rounded-full bg-gradient-to-tr from-[#FBCFE8] to-[#F472B6] flex items-center justify-center text-white shadow-sweet animate-bounce">
-              <HeartIcon className="size-4" />
+            <div className="absolute -top-2 -right-2 size-9 rounded-full bg-[#DB2777] flex items-center justify-center text-white shadow-sweet">
+              <HeartIcon className="size-4 fill-white" />
             </div>
           </div>
         </div>
 
         {/* Kolom Kanan: Panel Kontrol & Pengaturan Cetak (Glassmorphic Action Card) */}
-        <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-center animate-container-right">
+        <div className="lg:col-span-7 flex flex-col justify-center animate-container-right">
           <Card
             variant="glass"
-            padding="lg"
-            className="space-y-4 shadow-sweet-card"
+            padding="md"
+            className="space-y-3.5 shadow-sweet-card"
           >
             {/* Header: Judul & Info Frame */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/60 pb-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/60 pb-2.5">
               <div>
                 <h1
                   id="preview-heading"
                   className="font-heading font-extrabold text-2xl sm:text-3xl text-[#3F3D56] flex items-center gap-2"
                 >
                   <span>YOUR MEMORIES</span>
-                  <HeartIcon className="size-6 text-[#F472B6]" />
+                  <HeartIcon className="size-6 text-sweet-primaryStrong" />
                 </h1>
                 <p className="text-xs sm:text-sm text-sweet-muted font-heading font-semibold">
                   {activeTemplate?.name || "Sweet Strip"} • Frame{" "}
@@ -333,12 +346,12 @@ export function PhotoPreview({
               <div
                 role="group"
                 aria-label="Mode tampilan preview"
-                className="inline-flex flex-wrap items-center p-1 rounded-full bg-white/80 border border-white/90 shadow-xs gap-1"
+                className="inline-flex flex-wrap items-center p-1 rounded-2xl bg-sweet-bg border border-[#F3E6EE] gap-1"
               >
                 {(
                   [
                     { id: "composite", label: "Hasil Cetak" },
-                    { id: "gif", label: "Boomerang GIF ✨" },
+                    { id: "gif", label: "Boomerang GIF" },
                     { id: "slideshow", label: "Slideshow" },
                     { id: "originals", label: "Foto Asli" },
                   ] as const
@@ -348,7 +361,7 @@ export function PhotoPreview({
                     type="button"
                     aria-pressed={viewTab === tab.id}
                     onClick={() => setViewTab(tab.id)}
-                    className={`min-h-[38px] px-3.5 rounded-full font-heading font-bold text-xs transition-all ${
+                    className={`min-h-[44px] px-3 rounded-xl font-heading font-bold text-xs transition-all active:scale-95 ${
                       viewTab === tab.id
                         ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
                         : "text-sweet-muted hover:text-sweet-text"
@@ -361,10 +374,7 @@ export function PhotoPreview({
             </div>
 
             {/* Tombol Alat / Tools Row */}
-            <div className="space-y-2">
-              <label className="text-xs font-heading font-bold text-sweet-muted uppercase tracking-wider block">
-                Opsi & Kustomisasi
-              </label>
+            <div className="space-y-2.5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {onBackToPhotoSelection && (
                   <Button
@@ -373,7 +383,7 @@ export function PhotoPreview({
                     disabled={isBusy}
                     leftIcon={<RefreshIcon className="size-4 text-sweet-muted" />}
                     onClick={onBackToPhotoSelection}
-                    className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
+                    className="min-h-[48px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
                   >
                     PILIH ULANG FOTO
                   </Button>
@@ -385,7 +395,7 @@ export function PhotoPreview({
                   disabled={isBusy}
                   leftIcon={<PaletteIcon className="size-4 text-sweet-primaryStrong" />}
                   onClick={onOpenChangeFrame}
-                  className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
+                  className="min-h-[48px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
                 >
                   GANTI FRAME
                 </Button>
@@ -396,73 +406,112 @@ export function PhotoPreview({
                   disabled={isBusy}
                   leftIcon={<QrIcon className="size-4 text-sweet-primaryStrong" />}
                   onClick={() => setQrOpen(true)}
-                  className="min-h-[50px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
+                  className="min-h-[48px] text-xs font-heading font-bold rounded-2xl border-2 border-white/80 active:scale-95 transition-all"
                 >
                   KODE QR & SHARE
                 </Button>
               </div>
 
-              {/* Quick Filter & AR Switcher directly on Preview Screen */}
+              {/* Compact Tabbed Quick Filter & AR Switcher directly on Preview Screen */}
               {onQuickCustomize && (
-                <div className="pt-2 space-y-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-heading font-extrabold text-sweet-muted mr-1">
-                      Filter Cepat:
+                <div className="p-2.5 rounded-2xl bg-white/85 border border-[#F3E6EE] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div
+                      role="tablist"
+                      aria-label="Kustomisasi cepat filter atau stiker AR"
+                      className="inline-flex items-center p-1 rounded-xl bg-sweet-bg border border-[#F3E6EE] gap-1"
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={quickTab === "filter"}
+                        onClick={() => setQuickTab("filter")}
+                        className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-heading font-extrabold transition-all ${
+                          quickTab === "filter"
+                            ? "bg-[#DCD6F7] text-[#3F3D56] shadow-xs"
+                            : "text-sweet-muted hover:text-sweet-text"
+                        }`}
+                      >
+                        Filter Cepat (10)
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={quickTab === "ar"}
+                        onClick={() => setQuickTab("ar")}
+                        className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-heading font-extrabold transition-all ${
+                          quickTab === "ar"
+                            ? "bg-[#FBCFE8] text-[#3F3D56] shadow-xs"
+                            : "text-sweet-muted hover:text-sweet-text"
+                        }`}
+                      >
+                        AR Stiker Wajah (9)
+                      </button>
+                    </div>
+                    <span className="text-[11px] font-heading font-bold text-sweet-primaryStrong hidden sm:inline">
+                      {quickTab === "filter"
+                        ? `Aktif: ${activeFilter?.name || "Natural"}`
+                        : `Aktif: ${activeArPreset?.name || "Tanpa AR"}`}
                     </span>
-                    {PHOTO_FILTERS.map((flt) => {
-                      const isSel =
-                        (session.filter_name || "original") === flt.id;
-                      return (
-                        <button
-                          key={flt.id}
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() =>
-                            handleQuickFilterOrAr({ filterName: flt.id })
-                          }
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-extrabold border transition-all ${
-                            isSel
-                              ? "bg-[#DCD6F7] border-[#9E8CE0] text-sweet-text shadow-xs"
-                              : "bg-white/75 hover:bg-white border-white text-sweet-muted"
-                          }`}
-                        >
-                          {flt.name}
-                        </button>
-                      );
-                    })}
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-heading font-extrabold text-sweet-muted mr-1">
-                      AR Stiker:
-                    </span>
-                    {DEFAULT_AR_PRESETS.map((prs) => {
-                      const isSel =
-                        (session.ar_preset_id || "none") === prs.id;
-                      return (
-                        <button
-                          key={prs.id}
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() =>
-                            handleQuickFilterOrAr({ arPresetId: prs.id })
-                          }
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-heading font-extrabold border transition-all ${
-                            isSel
-                              ? "bg-[#FFF0F5] border-[#F472B6] text-sweet-text shadow-xs"
-                              : "bg-white/75 hover:bg-white border-white text-sweet-muted"
-                          }`}
-                        >
-                          {prs.emoji} {prs.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+
+                  {quickTab === "filter" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      {PHOTO_FILTERS.map((flt) => {
+                        const isSel =
+                          (session.filter_name || "original") === flt.id;
+                        return (
+                          <button
+                            key={flt.id}
+                            type="button"
+                            aria-pressed={isSel}
+                            disabled={isBusy}
+                            onClick={() =>
+                              handleQuickFilterOrAr({ filterName: flt.id })
+                            }
+                            className={`min-h-[44px] px-2.5 py-1 rounded-xl text-[11px] font-heading font-extrabold border-2 transition-all truncate active:scale-95 ${
+                              isSel
+                                ? "bg-[#DCD6F7] border-[#9E8CE0] text-sweet-text shadow-xs"
+                                : "bg-white hover:bg-[#FFF5F7] border-[#F3E6EE] text-sweet-muted"
+                            }`}
+                          >
+                            {flt.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                      {DEFAULT_AR_PRESETS.map((prs) => {
+                        const isSel =
+                          (session.ar_preset_id || "none") === prs.id;
+                        return (
+                          <button
+                            key={prs.id}
+                            type="button"
+                            aria-pressed={isSel}
+                            disabled={isBusy}
+                            onClick={() =>
+                              handleQuickFilterOrAr({ arPresetId: prs.id })
+                            }
+                            className={`min-h-[44px] px-2.5 py-1 rounded-xl text-[11px] font-heading font-extrabold border-2 transition-all truncate active:scale-95 ${
+                              isSel
+                                ? "bg-[#FFF0F5] border-[#DB2777] text-sweet-text shadow-xs"
+                                : "bg-white hover:bg-[#FFF5F7] border-[#F3E6EE] text-sweet-muted"
+                            }`}
+                          >
+                            {prs.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Print Section Box */}
-            <div className="p-4 rounded-3xl bg-white/70 border border-white/90 shadow-xs space-y-3">
+            <div className="p-4 rounded-3xl bg-sweet-bg border border-[#F3E6EE] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-heading font-extrabold text-sm text-[#3F3D56]">
                   Jumlah Salinan Cetak
@@ -470,18 +519,18 @@ export function PhotoPreview({
                 <div
                   role="group"
                   aria-label="Jumlah cetakan"
-                  className="inline-flex items-center gap-2 bg-sweet-bg px-3 py-1.5 rounded-full border border-sweet-border"
+                  className="inline-flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-2xl border border-sweet-border"
                 >
                   <button
                     type="button"
                     aria-label="Kurangi jumlah cetakan"
                     disabled={copies <= 1 || isBusy}
                     onClick={() => setCopies((c) => Math.max(1, c - 1))}
-                    className="size-8 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
+                    className="size-11 rounded-xl bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
                   >
-                    <MinusIcon className="size-3.5" />
+                    <MinusIcon className="size-4" />
                   </button>
-                  <span className="font-heading font-extrabold text-sm text-sweet-text min-w-[64px] text-center">
+                  <span className="font-heading font-extrabold text-sm text-sweet-text min-w-[68px] text-center">
                     {copies} Lembar
                   </span>
                   <button
@@ -489,9 +538,9 @@ export function PhotoPreview({
                     aria-label="Tambah jumlah cetakan"
                     disabled={copies >= 5 || isBusy}
                     onClick={() => setCopies((c) => Math.min(5, c + 1))}
-                    className="size-8 rounded-full bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
+                    className="size-11 rounded-xl bg-sweet-surface hover:bg-sweet-blush disabled:opacity-40 flex items-center justify-center text-sweet-text border border-sweet-border transition-colors"
                   >
-                    <PlusIcon className="size-3.5" />
+                    <PlusIcon className="size-4" />
                   </button>
                 </div>
               </div>

@@ -176,6 +176,14 @@ export default function KioskHomePage() {
             selectedFrameColor={selectedFrameColor}
             cameraConnected={cameraStatus?.connected ?? true}
             onStartTapped={openPreparationStep}
+            welcomeMode={operatorConfig.welcomeScreenMode ?? "live_preview"}
+            attachVideoRef={webcam.attachVideoRef}
+            streamReady={webcam.streamReady}
+            isMirrored={webcam.isMirrored}
+            deviceLabel={webcam.deviceLabel}
+            filterCss={getFilterCss(selectedFilter)}
+            webcamError={webcam.webcamError}
+            onRetryWebcam={webcam.retryWebcam}
           />
         )}
 
@@ -251,14 +259,14 @@ export default function KioskHomePage() {
               padding="lg"
               className="max-w-md w-full flex flex-col items-center space-y-4"
             >
-              <div className="size-20 rounded-full bg-gradient-to-tr from-[#FBCFE8] to-[#F472B6] flex items-center justify-center shadow-sweet animate-bounce">
+              <div className="size-20 rounded-full bg-[#F472B6] flex items-center justify-center shadow-sweet">
                 <SpinnerIcon className="size-10 text-white" />
               </div>
               <h2 className="text-2xl font-heading font-extrabold text-[#3F3D56]">
                 Menyusun Strip Foto Manismu...
               </h2>
               <p className="text-sm font-heading font-semibold text-sweet-muted">
-                Menggabungkan foto ke dalam frame dengan kualitas cetak tinggi ✨
+                Menggabungkan foto ke dalam frame dengan kualitas cetak tinggi.
               </p>
             </Card>
           </section>

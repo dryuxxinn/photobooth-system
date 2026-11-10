@@ -48,6 +48,13 @@ class Settings:
         if origin.strip()
     ]
 
+    # DOKU Payment Gateway
+    DOKU_CLIENT_ID: str = os.getenv("DOKU_CLIENT_ID", "")
+    DOKU_SECRET_KEY: str = os.getenv("DOKU_SECRET_KEY", "")
+    DOKU_IS_PRODUCTION: bool = os.getenv("DOKU_IS_PRODUCTION", "False").lower() in ("true", "1")
+    DOKU_MERCHANT_NAME: str = os.getenv("DOKU_MERCHANT_NAME", "Sweet Studio Photobooth")
+    DOKU_QRIS_EXPIRY_MINUTES: int = int(os.getenv("DOKU_QRIS_EXPIRY_MINUTES", "5"))
+
 
 settings = Settings()
 

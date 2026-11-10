@@ -5,13 +5,14 @@ services:
       dockerfile: backend/Dockerfile
     container_name: dryu-booth-backend
     restart: unless-stopped
+    privileged: true
     ports:
       - "8000:8000"
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8000
-      - CAMERA_DRIVER=${CAMERA_DRIVER:-wifi}
-      - CAMERA_MODEL=${CAMERA_MODEL:-Sony Alpha a6400 (Wi-Fi)}
+      - CAMERA_DRIVER=${CAMERA_DRIVER:-gphoto}
+      - CAMERA_MODEL=${CAMERA_MODEL:-Canon EOS 700D}
       - CAMERA_WIFI_IP=${CAMERA_WIFI_IP:-192.168.122.1}
       - CAMERA_WIFI_PORT=${CAMERA_WIFI_PORT:-10000}
       - CAMERA_WIFI_PROTOCOL=${CAMERA_WIFI_PROTOCOL:-sony_http}
@@ -20,6 +21,10 @@ services:
       - STORAGE_BASE_DIR=/app/storage
       - DATABASE_PATH=/app/database/photobooth.db
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - DOKU_CLIENT_ID=${DOKU_CLIENT_ID:-}
+      - DOKU_SECRET_KEY=${DOKU_SECRET_KEY:-}
+      - DOKU_IS_PRODUCTION=${DOKU_IS_PRODUCTION:-false}
+      - DOKU_MERCHANT_NAME=${DOKU_MERCHANT_NAME:-Sweet Studio Photobooth}
     volumes:
       - ./storage:/app/storage
       - ./database:/app/database

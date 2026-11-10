@@ -63,6 +63,7 @@ class SessionManager:
             SessionState.CAPTURING,
             SessionState.PROCESSING,
             SessionState.PREVIEW,
+            SessionState.ABORTED,
         ],
     }
 

@@ -129,10 +129,13 @@ export function TemplateManager({
           >
             <div className="flex items-center justify-between">
               <span className="font-heading font-extrabold text-sm text-[#3F3D56] flex items-center gap-2">
-                <span>📱 iPad / Dongle Capture Card</span>
+                <span>iPad / Dongle Capture Card</span>
               </span>
               {config.cameraSourceMode !== "server" && (
-                <span className="text-[#F472B6] font-bold text-xs">✓ Aktif</span>
+                <span className="text-[#F472B6] font-bold text-xs inline-flex items-center gap-1">
+                  <CheckIcon className="size-3.5" />
+                  <span>Aktif</span>
+                </span>
               )}
             </div>
             <p className="text-xs text-sweet-muted">
@@ -157,10 +160,13 @@ export function TemplateManager({
           >
             <div className="flex items-center justify-between">
               <span className="font-heading font-extrabold text-sm text-[#3F3D56] flex items-center gap-2">
-                <span>🖥️ DSLR USB Laptop (Server Backend)</span>
+                <span>DSLR USB Laptop (Server Backend)</span>
               </span>
               {config.cameraSourceMode === "server" && (
-                <span className="text-[#A855F7] font-bold text-xs">✓ Aktif</span>
+                <span className="text-[#A855F7] font-bold text-xs inline-flex items-center gap-1">
+                  <CheckIcon className="size-3.5" />
+                  <span>Aktif</span>
+                </span>
               )}
             </div>
             <p className="text-xs text-sweet-muted">
@@ -174,7 +180,7 @@ export function TemplateManager({
           <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
             <div>
               <span className="font-heading font-bold text-sm text-sweet-text block">
-                🪞 Cermin Kamera (Mirror Viewfinder)
+                Cermin Kamera (Mirror Viewfinder)
               </span>
               <span className="text-xs text-sweet-muted">
                 Balik preview kamera secara horizontal layaknya cermin (disarankan untuk kenyamanan selfie)
@@ -196,7 +202,7 @@ export function TemplateManager({
 
           <div className="p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border flex flex-col justify-between gap-1.5">
             <label htmlFor="admin-default-filter" className="font-heading font-bold text-sm text-sweet-text block">
-              🪄 Filter Kamera Awal Kiosk:
+              Filter Kamera Awal Kiosk:
             </label>
             <select
               id="admin-default-filter"
@@ -205,7 +211,7 @@ export function TemplateManager({
                 const next = { ...config, defaultFilter: e.target.value };
                 onUpdateConfig(next);
               }}
-              className="w-full min-h-[38px] px-3 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text outline-none"
+              className="w-full min-h-[44px] px-3 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
             >
               {PHOTO_FILTERS.map((flt) => (
                 <option key={flt.id} value={flt.id}>
@@ -229,6 +235,69 @@ export function TemplateManager({
             </p>
           </div>
           <StatusBadge tone="success">Tersimpan Otomatis</StatusBadge>
+        </div>
+
+        {/* Pilihan Mode Halaman Start Kiosk (Attract Mode) */}
+        <div className="p-4 rounded-3xl bg-sweet-bg border border-sweet-border space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="font-heading font-bold text-sm text-sweet-text block">
+                Tampilan Halaman Start Kiosk (Attract Mode)
+              </span>
+              <span className="text-xs text-sweet-muted">
+                Pilih apakah halaman awal menampilkan 3D photostrip statis atau kamera live untuk menarik perhatian pengunjung sekitar.
+              </span>
+            </div>
+            <StatusBadge tone={config.welcomeScreenMode === "live_preview" ? "pink" : "lavender"}>
+              {config.welcomeScreenMode === "live_preview" ? "Live Mirror Kamera" : "Statis 3D Strips"}
+            </StatusBadge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => onUpdateConfig({ ...config, welcomeScreenMode: "static" })}
+              className={`min-h-[64px] p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col gap-1.5 active:scale-95 ${
+                (config.welcomeScreenMode ?? "static") === "static"
+                  ? "bg-[#FFF0F5] border-[#DB2777] shadow-xs"
+                  : "bg-white hover:bg-sweet-surface border-sweet-border"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-heading font-extrabold text-xs text-[#3F3D56]">
+                  1. Showcase Statis (3D Floating Strips)
+                </span>
+                {(config.welcomeScreenMode ?? "static") === "static" && (
+                  <CheckIcon className="size-4 text-sweet-primaryStrong" />
+                )}
+              </div>
+              <p className="text-[11px] text-sweet-muted">
+                Menampilkan panggung 3D dengan 3 contoh photostrip yang melayang estetik per desain Sweet Studio.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onUpdateConfig({ ...config, welcomeScreenMode: "live_preview" })}
+              className={`min-h-[64px] p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col gap-1.5 active:scale-95 ${
+                config.welcomeScreenMode === "live_preview"
+                  ? "bg-[#FFF0F5] border-[#DB2777] shadow-xs"
+                  : "bg-white hover:bg-sweet-surface border-sweet-border"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-heading font-extrabold text-xs text-[#3F3D56]">
+                  2. Live Preview (Cermin Interaktif / Attract Mode)
+                </span>
+                {config.welcomeScreenMode === "live_preview" && (
+                  <CheckIcon className="size-4 text-sweet-primaryStrong" />
+                )}
+              </div>
+              <p className="text-[11px] text-sweet-muted">
+                Kamera aktif live di layar beranda sebagai cermin. Menarik perhatian orang sekitar untuk merapikan pose dan menekan tombol mulai.
+              </p>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -422,7 +491,7 @@ export function TemplateManager({
                   onClick={() =>
                     onUpdateConfig({ ...config, defaultFrameColor: theme.id })
                   }
-                  className={`min-h-[42px] px-3.5 py-1.5 rounded-full border-2 text-xs font-heading font-bold flex items-center gap-2 ${
+                  className={`min-h-[44px] px-3.5 py-1.5 rounded-xl border-2 text-xs font-heading font-bold flex items-center gap-2 ${
                     isDefault
                       ? "bg-sweet-blush border-sweet-primaryStrong text-sweet-text"
                       : "bg-sweet-bg border-sweet-border text-sweet-muted"
@@ -506,7 +575,7 @@ export function TemplateManager({
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-sweet-border/60">
                   <label
                     htmlFor={`overlay-upload-${tpl.id}`}
-                    className="min-h-[36px] flex-1 px-3 py-1 rounded-full bg-white hover:bg-sweet-blush border border-sweet-border text-[11px] font-heading font-bold text-sweet-text cursor-pointer inline-flex items-center justify-center text-center transition-colors"
+                    className="min-h-[44px] flex-1 px-3 py-1.5 rounded-xl bg-white hover:bg-sweet-blush border border-sweet-border text-[11px] font-heading font-bold text-sweet-text cursor-pointer inline-flex items-center justify-center text-center transition-colors"
                   >
                     {uploadingId === tpl.id
                       ? "Mengunggah..."
@@ -527,7 +596,7 @@ export function TemplateManager({
                       type="button"
                       disabled={uploadingId === tpl.id}
                       onClick={() => handleRemoveOverlay(tpl.id)}
-                      className="min-h-[36px] px-3 py-1 rounded-full bg-[#FCECEE] hover:bg-[#F7D6DA] text-sweet-error text-[11px] font-heading font-bold border border-[#EABAC0]"
+                      className="min-h-[44px] px-3 py-1.5 rounded-xl bg-[#FCECEE] hover:bg-[#F7D6DA] text-sweet-error text-[11px] font-heading font-bold border border-[#EABAC0]"
                     >
                       Hapus PNG
                     </button>
@@ -539,7 +608,7 @@ export function TemplateManager({
                     type="button"
                     aria-pressed={isEnabled}
                     onClick={() => toggleTemplateEnabled(tpl.id)}
-                    className={`min-h-[42px] flex-1 px-3 py-1.5 rounded-full text-xs font-heading font-bold border inline-flex items-center justify-center gap-1.5 ${
+                    className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl text-xs font-heading font-bold border inline-flex items-center justify-center gap-1.5 ${
                       isEnabled
                         ? "bg-sweet-primary text-sweet-text border-sweet-primaryStrong/40"
                         : "bg-white text-sweet-muted border-sweet-border"
@@ -555,7 +624,7 @@ export function TemplateManager({
                       onClick={() =>
                         onUpdateConfig({ ...config, defaultTemplateId: tpl.id })
                       }
-                      className="min-h-[42px] px-3 py-1.5 rounded-full bg-white hover:bg-sweet-blush border border-sweet-border text-xs font-heading font-bold text-sweet-text"
+                      className="min-h-[44px] px-3 py-1.5 rounded-xl bg-white hover:bg-sweet-blush border border-sweet-border text-xs font-heading font-bold text-sweet-text"
                     >
                       Jadikan Default
                     </button>

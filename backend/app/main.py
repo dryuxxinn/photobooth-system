@@ -41,6 +41,16 @@ app.include_router(session_router)
 app.include_router(printer_router)
 app.include_router(ar_router)
 
+# Direct root alias for DOKU Webhook Notification
+from backend.app.api.session import handle_doku_notification
+app.add_api_route(
+    "/payment/doku/notify",
+    handle_doku_notification,
+    methods=["POST"],
+    tags=["Payment"],
+    summary="DOKU Webhook Notification Root Route",
+)
+
 
 class WebSocketConnectionManager:
     def __init__(self):
