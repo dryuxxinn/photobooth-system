@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { playSuccessChime } from "@/lib/sound";
 import {
+  AlertIcon,
   CheckIcon,
   HeartIcon,
   QrIcon,
@@ -30,12 +31,12 @@ interface QrisRecord {
   amount: number;
   package_name?: string;
   qr_string: string;
+  checkout_url?: string | null;
   status: "PENDING" | "PAID" | "FAILED";
   provider?: string;
-  is_simulated?: boolean;
 }
 
-const QRIS_EXPIRY_SECONDS = 300; // 5 minutes standard DOKU QRIS expiry
+const QRIS_EXPIRY_SECONDS = 300; // 5 minutes DOKU QRIS expiry
 
 export function PaymentModal({
   isOpen,
@@ -47,6 +48,9 @@ export function PaymentModal({
   const [tab, setTab] = useState<"qris" | "voucher">("qris");
   const [qrisTx, setQrisTx] = useState<QrisRecord | null>(null);
   const [loadingQris, setLoadingQris] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [qrisError, setQrisError] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(QRIS_EXPIRY_SECONDS);
 
   const [voucherCode, setVoucherCode] = useState("");
@@ -57,15 +61,26 @@ export function PaymentModal({
   const expiryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const successHandledRef = useRef<boolean>(false);
 
-  // Initialize or regenerate QRIS payment
+  // Initialize or regenerate production DOKU QRIS payment
   const fetchNewQris = () => {
     setLoadingQris(true);
+    setQrisError(null);
+    setStatusNotice(null);
+    setQrisTx(null);
     setSecondsLeft(QRIS_EXPIRY_SECONDS);
     successHandledRef.current = false;
+
     photoboothApi
       .createQrisPayment(amountIdr, "Sweet Studio Photobooth Session")
-      .then((tx) => setQrisTx(tx))
-      .catch(() => null)
+      .then((tx) => {
+        setQrisTx(tx);
+      })
+      .catch((err: any) => {
+        setQrisError(
+          err?.message ||
+            "Gagal membuat kode QRIS DOKU. Pastikan koneksi dan kredensial DOKU aktif."
+        );
+      })
       .finally(() => setLoadingQris(false));
   };
 
@@ -80,7 +95,6 @@ export function PaymentModal({
     setVoucherError(null);
     fetchNewQris();
 
-    // 5-minute expiry countdown timer
     expiryTimerRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -97,7 +111,7 @@ export function PaymentModal({
     };
   }, [isOpen, amountIdr]);
 
-  // Real-time polling for DOKU QRIS webhook confirmation
+  // Real-time polling for DOKU QRIS webhook & server status confirmation
   useEffect(() => {
     if (!isOpen || !qrisTx || qrisTx.status !== "PENDING" || secondsLeft <= 0) {
       if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
@@ -106,7 +120,9 @@ export function PaymentModal({
 
     pollingTimerRef.current = setInterval(async () => {
       try {
-        const check = await photoboothApi.getQrisPaymentStatus(qrisTx.transaction_id);
+        const check = await photoboothApi.getQrisPaymentStatus(
+          qrisTx.transaction_id
+        );
         if (check.status === "PAID" && !successHandledRef.current) {
           successHandledRef.current = true;
           if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
@@ -115,35 +131,56 @@ export function PaymentModal({
           setTimeout(() => {
             onPaymentSuccess();
           }, 850);
+        } else if (check.status === "FAILED") {
+          if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+          setQrisTx((prev) => (prev ? { ...prev, status: "FAILED" } : prev));
+          setQrisError("Transaksi QRIS gagal atau dibatalkan. Silakan buat QRIS baru.");
         }
       } catch {
-        // Silent fallback on polling network blip
+        // Ignore transient network blips during background polling
       }
-    }, 2000);
+    }, 2500);
 
     return () => {
       if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
     };
   }, [isOpen, qrisTx, secondsLeft, onPaymentSuccess]);
 
-  // Manual test confirmation (for development / simulation)
-  const handleSimulateQrisPaid = async () => {
+  // Active status verification with DOKU server when user taps "Cek Status Pembayaran"
+  const handleCheckPaymentStatus = async () => {
     if (!qrisTx) {
-      onPaymentSuccess();
+      fetchNewQris();
       return;
     }
-    setLoadingQris(true);
+    setCheckingStatus(true);
+    setStatusNotice(null);
+    setQrisError(null);
     try {
-      const updated = await photoboothApi.confirmQrisPayment(qrisTx.transaction_id);
-      setQrisTx((prev) => (prev ? { ...prev, status: updated.status } : prev));
-      playSuccessChime(true);
-      setTimeout(() => {
-        onPaymentSuccess();
-      }, 650);
-    } catch {
-      onPaymentSuccess();
+      const updated = await photoboothApi.confirmQrisPayment(
+        qrisTx.transaction_id
+      );
+      if (updated.status === "PAID" && !successHandledRef.current) {
+        successHandledRef.current = true;
+        if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+        setQrisTx((prev) => (prev ? { ...prev, status: "PAID" } : prev));
+        playSuccessChime(true);
+        setTimeout(() => {
+          onPaymentSuccess();
+        }, 700);
+      } else if (updated.status === "FAILED") {
+        setQrisTx((prev) => (prev ? { ...prev, status: "FAILED" } : prev));
+        setQrisError("Transaksi QRIS tidak berhasil. Silakan buat QRIS baru.");
+      } else {
+        setStatusNotice(
+          "Pembayaran belum terkonfirmasi dari DOKU. Jika Anda sudah membayar, mohon tunggu beberapa detik karena sistem sedang memverifikasi otomatis."
+        );
+      }
+    } catch (err: any) {
+      setQrisError(
+        err?.message || "Gagal memeriksa status pembayaran ke server DOKU."
+      );
     } finally {
-      setLoadingQris(false);
+      setCheckingStatus(false);
     }
   };
 
@@ -156,12 +193,16 @@ export function PaymentModal({
     setVerifyingVoucher(true);
     setVoucherError(null);
     try {
-      await photoboothApi.verifyVoucherCode(voucherCode.trim(), validVoucherCodes);
+      await photoboothApi.verifyVoucherCode(
+        voucherCode.trim(),
+        validVoucherCodes
+      );
       playSuccessChime(true);
       onPaymentSuccess();
     } catch (err: any) {
       setVoucherError(
-        err?.message || "Kode voucher tidak valid. Coba 'SWEET2026'."
+        err?.message ||
+          "Kode voucher tidak ditemukan atau sudah tidak berlaku. Silakan hubungi kasir."
       );
     } finally {
       setVerifyingVoucher(false);
@@ -176,14 +217,16 @@ export function PaymentModal({
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(
+    seconds
+  ).padStart(2, "0")}`;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Pembayaran Sesi Photobooth"
-      subtitle="Pindai QRIS instan atau masukkan kode voucher kasir untuk mulai berfoto."
+      subtitle="Pindai QRIS DOKU resmi atau masukkan kode voucher kasir untuk mulai berfoto."
       maxWidthClass="max-w-lg"
     >
       <div className="space-y-4">
@@ -237,13 +280,17 @@ export function PaymentModal({
                     Membuka sesi foto studio...
                   </span>
                 </div>
-              ) : secondsLeft <= 0 ? (
+              ) : secondsLeft <= 0 || qrisTx?.status === "FAILED" ? (
                 <div className="size-[210px] flex flex-col items-center justify-center gap-3 bg-[#FFF1F2] rounded-2xl border-2 border-[#FECDD3] text-center p-4">
                   <span className="font-heading font-extrabold text-sm text-[#BE123C]">
-                    QRIS Telah Kedaluwarsa
+                    {qrisTx?.status === "FAILED"
+                      ? "Transaksi QRIS Gagal"
+                      : "QRIS Telah Kedaluwarsa"}
                   </span>
                   <p className="text-xs text-sweet-muted">
-                    Batas waktu pembayaran 5 menit telah berakhir.
+                    {qrisTx?.status === "FAILED"
+                      ? "Silakan buat ulang kode QRIS untuk melanjutkan pembayaran."
+                      : "Batas waktu pembayaran 5 menit telah berakhir."}
                   </p>
                   <Button
                     variant="strong"
@@ -254,17 +301,40 @@ export function PaymentModal({
                     Buat QRIS Baru
                   </Button>
                 </div>
-              ) : loadingQris && !qrisTx ? (
+              ) : loadingQris ? (
                 <div className="size-[210px] flex flex-col items-center justify-center gap-2">
                   <SpinnerIcon className="size-8 text-sweet-primaryStrong animate-spin" />
                   <span className="text-xs font-heading font-bold text-sweet-muted">
-                    Membuat QRIS DOKU...
+                    Menghubungkan ke DOKU QRIS...
                   </span>
+                </div>
+              ) : qrisError || !qrisTx?.qr_string ? (
+                <div
+                  role="alert"
+                  className="min-h-[210px] w-full flex flex-col items-center justify-center gap-2.5 bg-[#FFF1F2] rounded-2xl border border-[#FECDD3] text-center p-4"
+                >
+                  <div className="size-10 rounded-full bg-[#FFE4E6] text-[#BE123C] flex items-center justify-center">
+                    <AlertIcon className="size-5" />
+                  </div>
+                  <span className="font-heading font-extrabold text-xs text-[#BE123C]">
+                    QRIS Belum Dapat Ditampilkan
+                  </span>
+                  <p className="text-[11px] text-sweet-muted leading-relaxed">
+                    {qrisError || "Menunggu respons dari server pembayaran DOKU."}
+                  </p>
+                  <Button
+                    variant="strong"
+                    size="sm"
+                    onClick={fetchNewQris}
+                    leftIcon={<RefreshIcon className="size-4 text-white" />}
+                  >
+                    Coba Muat Ulang
+                  </Button>
                 </div>
               ) : (
                 <div className="relative flex flex-col items-center">
                   <QRCodeSVG
-                    value={qrisTx?.qr_string || "00020101021226580014ID.CO.QRIS"}
+                    value={qrisTx.qr_string}
                     size={200}
                     bgColor="#FFFFFF"
                     fgColor="#3F3D56"
@@ -272,7 +342,10 @@ export function PaymentModal({
                     includeMargin
                   />
                   <div className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-heading font-bold text-sweet-muted">
-                    <span className="size-2 rounded-full bg-[#10B981] animate-pulse" />
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full bg-[#10B981]"
+                    />
                     <span>Menunggu Pembayaran: </span>
                     <span className="text-sweet-primaryStrong font-extrabold font-mono">
                       {timeFormatted}
@@ -282,21 +355,33 @@ export function PaymentModal({
               )}
 
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <StatusBadge tone={qrisTx?.status === "PAID" ? "success" : "pink"}>
+                <StatusBadge
+                  tone={qrisTx?.status === "PAID" ? "success" : "pink"}
+                >
                   {qrisTx?.status === "PAID"
                     ? "Lunas • Sesi Aktif"
                     : `Nominal: ${formattedPrice}`}
                 </StatusBadge>
-                {qrisTx?.provider === "DOKU" && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#F3E8FF] text-[#6B21A8] text-[10px] font-heading font-extrabold border border-[#E9D5FF]">
-                    DOKU Live
+                {qrisTx?.invoice_number && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-sweet-bg text-sweet-muted text-[10px] font-mono font-bold border border-sweet-border">
+                    {qrisTx.invoice_number}
                   </span>
                 )}
               </div>
             </div>
 
+            {statusNotice && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="text-xs font-heading font-bold text-sweet-text bg-sweet-blush/80 border border-sweet-primary px-3.5 py-2 rounded-2xl max-w-sm"
+              >
+                {statusNotice}
+              </p>
+            )}
+
             <p className="text-xs text-sweet-muted max-w-sm mx-auto">
-              Buka aplikasi GoPay, OVO, Dana, ShopeePay, BCA, atau Mobile Banking pilihanmu, lalu pindai kode QRIS di atas.
+              Buka aplikasi GoPay, OVO, DANA, ShopeePay, BCA, atau Mobile Banking pilihanmu, lalu pindai kode QRIS di atas. Sesi akan terbuka otomatis setelah pembayaran berhasil.
             </p>
 
             {/* Bottom Actions */}
@@ -304,15 +389,30 @@ export function PaymentModal({
               <Button
                 variant="strong"
                 size="lg"
-                loading={loadingQris}
+                loading={checkingStatus}
+                disabled={loadingQris || !qrisTx || qrisTx.status === "PAID"}
                 leftIcon={<CheckIcon className="size-5 text-white" />}
-                onClick={handleSimulateQrisPaid}
+                onClick={handleCheckPaymentStatus}
                 className="flex-1 min-h-[48px]"
-                title="Tekan untuk simulasi pembayaran lunas instan"
               >
-                Simulasi / Tes Bayar
+                Sudah Bayar? Cek Status
               </Button>
-              <Button variant="surface" size="lg" onClick={onClose} className="min-h-[48px]">
+              <Button
+                variant="surface"
+                size="lg"
+                disabled={loadingQris || checkingStatus}
+                onClick={fetchNewQris}
+                leftIcon={<RefreshIcon className="size-4" />}
+                className="min-h-[48px]"
+              >
+                QR Baru
+              </Button>
+              <Button
+                variant="surface"
+                size="lg"
+                onClick={onClose}
+                className="min-h-[48px]"
+              >
                 Batal
               </Button>
             </div>
@@ -341,16 +441,21 @@ export function PaymentModal({
                   setVoucherCode(e.target.value.toUpperCase());
                   if (voucherError) setVoucherError(null);
                 }}
-                placeholder="Contoh: SWEET2026"
+                placeholder="Masukkan kode voucher"
                 aria-describedby="voucher-hint"
                 className="w-full min-h-[52px] px-4 py-2.5 rounded-2xl bg-white border-2 border-sweet-border text-sweet-text font-heading font-extrabold text-base tracking-wider uppercase focus:border-[#F472B6]"
               />
-              <span id="voucher-hint" className="block text-[11px] text-sweet-muted mt-1.5">
-                Kode bawaan untuk kasir/operator: <code>SWEET2026</code>,{" "}
-                <code>VIPFREE</code>, atau <code>BESTIE</code>.
+              <span
+                id="voucher-hint"
+                className="block text-[11px] text-sweet-muted mt-1.5"
+              >
+                Masukkan kode voucher resmi yang diberikan oleh kasir atau petugas studio.
               </span>
               {voucherError && (
-                <p role="alert" className="text-xs font-heading font-bold text-sweet-error mt-2">
+                <p
+                  role="alert"
+                  className="text-xs font-heading font-bold text-sweet-error mt-2"
+                >
                   {voucherError}
                 </p>
               )}
@@ -367,7 +472,13 @@ export function PaymentModal({
               >
                 Gunakan Voucher & Mulai
               </Button>
-              <Button type="button" variant="surface" size="lg" onClick={onClose} className="min-h-[48px]">
+              <Button
+                type="button"
+                variant="surface"
+                size="lg"
+                onClick={onClose}
+                className="min-h-[48px]"
+              >
                 Batal
               </Button>
             </div>

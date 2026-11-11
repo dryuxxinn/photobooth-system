@@ -5,6 +5,19 @@ from typing import List
 # Base directory of the repository (2 levels up from backend/app/core)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
+# Automatically load .env file from PROJECT_ROOT if present
+_ENV_FILE = PROJECT_ROOT / ".env"
+if _ENV_FILE.is_file():
+    for _line in _ENV_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+        _stripped = _line.strip()
+        if not _stripped or _stripped.startswith("#") or "=" not in _stripped:
+            continue
+        _key, _, _val = _stripped.partition("=")
+        _key = _key.strip()
+        _val = _val.strip().strip('"').strip("'")
+        if _key and _key not in os.environ:
+            os.environ[_key] = _val
+
 
 class Settings:
     PROJECT_NAME: str = "Dryu Photobooth Backend"
@@ -48,10 +61,12 @@ class Settings:
         if origin.strip()
     ]
 
-    # DOKU Payment Gateway
+    # DOKU Payment Gateway (Production Ready)
     DOKU_CLIENT_ID: str = os.getenv("DOKU_CLIENT_ID", "")
     DOKU_SECRET_KEY: str = os.getenv("DOKU_SECRET_KEY", "")
-    DOKU_IS_PRODUCTION: bool = os.getenv("DOKU_IS_PRODUCTION", "False").lower() in ("true", "1")
+    DOKU_SHARED_KEY: str = os.getenv("DOKU_SHARED_KEY", "")
+    DOKU_MERCHANT_ID: str = os.getenv("DOKU_MERCHANT_ID", "")
+    DOKU_IS_PRODUCTION: bool = os.getenv("DOKU_IS_PRODUCTION", "True").lower() in ("true", "1")
     DOKU_MERCHANT_NAME: str = os.getenv("DOKU_MERCHANT_NAME", "Sweet Studio Photobooth")
     DOKU_QRIS_EXPIRY_MINUTES: int = int(os.getenv("DOKU_QRIS_EXPIRY_MINUTES", "5"))
 

@@ -218,11 +218,11 @@ export const photoboothApi = {
       amount: number;
       package_name: string;
       qr_string: string;
+      checkout_url?: string | null;
       status: "PENDING" | "PAID" | "FAILED";
       created_at: string;
       paid_at?: string | null;
       provider?: string;
-      is_simulated?: boolean;
     }>("/session/payment/qris", {
       method: "POST",
       body: JSON.stringify({ amount, package_name: packageName }),
@@ -235,18 +235,19 @@ export const photoboothApi = {
       amount: number;
       package_name: string;
       qr_string: string;
+      checkout_url?: string | null;
       status: "PENDING" | "PAID" | "FAILED";
       created_at: string;
       paid_at?: string | null;
       provider?: string;
-      is_simulated?: boolean;
     }>(`/session/payment/qris/${encodeURIComponent(transactionId)}`),
 
   confirmQrisPayment: (transactionId: string) =>
     request<{
       transaction_id: string;
+      invoice_number?: string;
       amount: number;
-      status: "PENDING" | "PAID";
+      status: "PENDING" | "PAID" | "FAILED";
       paid_at?: string | null;
     }>(`/session/payment/qris/${encodeURIComponent(transactionId)}/confirm`, {
       method: "POST",

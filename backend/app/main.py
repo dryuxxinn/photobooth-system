@@ -41,15 +41,22 @@ app.include_router(session_router)
 app.include_router(printer_router)
 app.include_router(ar_router)
 
-# Direct root alias for DOKU Webhook Notification
+# Direct root and alias routes for DOKU Webhook Notification (QRIS V2, Jokul, SNAP BI)
 from backend.app.api.session import handle_doku_notification
-app.add_api_route(
+
+for _doku_path in (
     "/payment/doku/notify",
-    handle_doku_notification,
-    methods=["GET", "POST", "HEAD"],
-    tags=["Payment"],
-    summary="DOKU Webhook Notification Root Route",
-)
+    "/payment/doku/notify/",
+    "/api/v1/payment/doku/notify",
+    "/v1.0/qr/qr-mpm-notify",
+):
+    app.add_api_route(
+        _doku_path,
+        handle_doku_notification,
+        methods=["GET", "POST", "HEAD", "OPTIONS", "PUT"],
+        tags=["Payment"],
+        summary=f"DOKU Webhook Notification ({_doku_path})",
+    )
 
 
 class WebSocketConnectionManager:

@@ -30,7 +30,7 @@ export const DEFAULT_OPERATOR_CONFIG: BoothOperatorConfig = {
     "single_frame_1",
     "wide_recap_1",
   ],
-  requirePayment: false,
+  requirePayment: true,
   sessionPriceIdr: 35000,
   voucherCodes: ["SWEET2026", "VIPFREE", "BESTIE"],
   enableSoundEffects: true,

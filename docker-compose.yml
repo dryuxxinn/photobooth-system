@@ -23,8 +23,11 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - DOKU_CLIENT_ID=${DOKU_CLIENT_ID:-}
       - DOKU_SECRET_KEY=${DOKU_SECRET_KEY:-}
-      - DOKU_IS_PRODUCTION=${DOKU_IS_PRODUCTION:-false}
+      - DOKU_SHARED_KEY=${DOKU_SHARED_KEY:-}
+      - DOKU_MERCHANT_ID=${DOKU_MERCHANT_ID:-}
+      - DOKU_IS_PRODUCTION=${DOKU_IS_PRODUCTION:-true}
       - DOKU_MERCHANT_NAME=${DOKU_MERCHANT_NAME:-Sweet Studio Photobooth}
+      - DOKU_QRIS_EXPIRY_MINUTES=${DOKU_QRIS_EXPIRY_MINUTES:-5}
     volumes:
       - ./storage:/app/storage
       - ./database:/app/database

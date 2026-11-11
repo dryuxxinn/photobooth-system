@@ -90,15 +90,30 @@ def test_gif_generation_overlay_payment_and_liveview(test_client: TestClient):
     assert del_res.status_code == 200
     assert del_res.json()["removed"] is True
 
-    # 3. Payment QRIS & Voucher verification
-    qris_res = test_client.post("/session/payment/qris", json={"amount": 35000})
-    assert qris_res.status_code == 200
-    tx_id = qris_res.json()["transaction_id"]
-    assert qris_res.json()["status"] == "PENDING"
+    # 3. Payment QRIS (Production DOKU API + Webhook Notification) & Voucher verification
+    from unittest.mock import patch
 
-    confirm_res = test_client.post(f"/session/payment/qris/{tx_id}/confirm")
-    assert confirm_res.status_code == 200
-    assert confirm_res.json()["status"] == "PAID"
+    with patch("backend.app.services.payment.doku.DokuPaymentService.is_configured", True), patch(
+        "backend.app.services.payment.doku.DokuPaymentService._call_doku_post",
+        return_value={"qris_data": {"qr_content": "00020101021226580014ID.CO.QRIS.WWW"}},
+    ):
+        qris_res = test_client.post("/session/payment/qris", json={"amount": 35000})
+        assert qris_res.status_code == 200
+        tx_id = qris_res.json()["transaction_id"]
+        assert qris_res.json()["status"] == "PENDING"
+        assert qris_res.json()["provider"] == "DOKU"
+
+        notify_res = test_client.post(
+            "/payment/doku/notify",
+            json={
+                "order": {"invoice_number": tx_id, "amount": 35000},
+                "transaction": {"status": "SUCCESS"},
+            },
+        )
+        assert notify_res.status_code == 200
+        status_res = test_client.get(f"/session/payment/qris/{tx_id}")
+        assert status_res.status_code == 200
+        assert status_res.json()["status"] == "PAID"
 
     v_ok = test_client.post("/session/payment/voucher", json={"code": "sweet2026"})
     assert v_ok.status_code == 200

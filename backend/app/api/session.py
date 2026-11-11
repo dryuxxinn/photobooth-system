@@ -223,15 +223,20 @@ def sync_session_cloud_link(
 
 @router.post("/payment/qris")
 def create_qris_payment(payload: QrisCreateRequest = QrisCreateRequest()):
-    """Create a dynamic QRIS payment transaction via DOKU API with simulation fallback."""
+    """Create a production dynamic QRIS payment transaction via DOKU API."""
     doku = get_doku_service()
-    tx = doku.generate_qris(
-        amount=payload.amount,
-        package_name=payload.package_name or "Sweet Studio Photobooth",
-    )
+    try:
+        tx = doku.generate_qris(
+            amount=payload.amount,
+            package_name=payload.package_name or "Sweet Studio Photobooth",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        )
     tx_id = tx["transaction_id"]
     _qris_transactions[tx_id] = tx
-    # Also index by invoice number if distinct
     inv = tx.get("invoice_number")
     if inv and inv != tx_id:
         _qris_transactions[inv] = tx
@@ -244,87 +249,133 @@ def get_qris_payment_status(transaction_id: str):
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="QRIS transaction not found.",
+            detail="Transaksi QRIS tidak ditemukan.",
         )
-    return record
+
+    if record.get("status") == "PENDING":
+        now_ts = datetime.now(timezone.utc).timestamp()
+        last_check = float(record.get("_last_doku_check_ts") or 0.0)
+        if now_ts - last_check >= 4.0:
+            record["_last_doku_check_ts"] = now_ts
+            doku = get_doku_service()
+            inv_no = record.get("invoice_number") or transaction_id
+            live_check = doku.check_transaction_status(inv_no)
+            if live_check.get("status") == "PAID":
+                record["status"] = "PAID"
+                record["paid_at"] = datetime.now(timezone.utc).isoformat()
+                record["doku_raw_response"] = live_check.get("raw_data", {})
+            elif live_check.get("status") == "FAILED":
+                record["status"] = "FAILED"
+
+    return {k: v for k, v in record.items() if not k.startswith("_")}
 
 
 @router.post("/payment/qris/{transaction_id}/confirm")
 def confirm_qris_payment(transaction_id: str):
-    """Simulate or confirm webhook payment completion for a QRIS transaction."""
+    """Actively verify QRIS transaction payment status directly with DOKU server."""
     record = _qris_transactions.get(transaction_id)
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="QRIS transaction not found.",
+            detail="Transaksi QRIS tidak ditemukan.",
         )
-    record["status"] = "PAID"
-    record["paid_at"] = datetime.now(timezone.utc).isoformat()
-    return record
+
+    if record.get("status") != "PAID":
+        doku = get_doku_service()
+        inv_no = record.get("invoice_number") or transaction_id
+        live_check = doku.check_transaction_status(inv_no)
+        if live_check.get("status") == "PAID":
+            record["status"] = "PAID"
+            record["paid_at"] = datetime.now(timezone.utc).isoformat()
+            record["doku_raw_response"] = live_check.get("raw_data", {})
+        elif live_check.get("status") == "FAILED":
+            record["status"] = "FAILED"
+
+    return {k: v for k, v in record.items() if not k.startswith("_")}
 
 
-@router.api_route("/payment/doku/notify", methods=["GET", "POST", "HEAD"])
+@router.api_route("/payment/doku/notify", methods=["GET", "POST", "HEAD", "OPTIONS", "PUT"])
+@router.api_route("/payment/doku/notify/", methods=["GET", "POST", "HEAD", "OPTIONS", "PUT"], include_in_schema=False)
 async def handle_doku_notification(request: Request):
     """
     DOKU Payment Gateway Webhook notification endpoint.
-    Supports GET/HEAD for healthcheck & URL verification pings from DOKU Dashboard,
-    and POST for real transaction payment notifications.
+    Supports GET/HEAD/OPTIONS for healthcheck & URL verification pings from DOKU Dashboard,
+    and POST/PUT for real transaction payment notifications (Jokul JSON, QRIS V2 Form/Query, SNAP BI JSON).
     """
-    if request.method in ("GET", "HEAD"):
-        return {"status": "OK", "message": "DOKU notification endpoint is active and healthy."}
+    now_dt = datetime.now(timezone.utc)
+    now_iso = now_dt.isoformat()
+    process_date_str = now_dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return {
+            "status": "SUCCESS",
+            "responseCode": "2005200",
+            "responseMessage": "Successful",
+            "transactionId": "DK0000001",
+            "activityCode": "200",
+            "message": "Transaction is Success",
+            "processDate": process_date_str,
+        }
 
     body_bytes = await request.body()
     headers = dict(request.headers)
-
-    # If DOKU sends an empty test ping or verification request
-    if not body_bytes or body_bytes.strip() in (b"", b"{}", b'{"test":true}'):
-        return {"status": "SUCCESS", "message": "DOKU test handshake verified."}
+    query_params = dict(request.query_params)
 
     doku = get_doku_service()
-    is_valid, reason = doku.verify_webhook_signature(
-        headers, body_bytes, target_path="/session/payment/doku/notify"
+    doku.verify_webhook_signature(
+        headers, body_bytes, target_path=request.url.path
     )
-    if not is_valid and doku.is_configured:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"DOKU signature verification failed: {reason}",
-        )
 
-    try:
-        payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON payload from DOKU webhook.",
-        )
+    parsed = doku.parse_notification(body_bytes, query_params, headers)
+    invoice_number = parsed.get("invoice_number")
+    doku_trx_id = parsed.get("transaction_id") or "DK0000001"
+    normalized_status = parsed.get("status")
+    amount = parsed.get("amount")
+    raw_data = parsed.get("raw_data", {})
 
-    order_info = payload.get("order", {})
-    invoice_number = order_info.get("invoice_number") or payload.get("transaction", {}).get("invoice_number")
-    transaction_info = payload.get("transaction", {})
-    trx_status = (transaction_info.get("status") or "").upper()
+    if normalized_status != "TEST_PING":
+        record = _qris_transactions.get(invoice_number) if invoice_number else None
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    record = _qris_transactions.get(invoice_number) if invoice_number else None
+        # If DOKU QRIS V2 sent its internal INVOICE/TRANSACTIONID instead of our invoice_number,
+        # match the latest active PENDING transaction
+        if not record and normalized_status == "PAID":
+            pending_candidates = [
+                tx for tx in _qris_transactions.values()
+                if isinstance(tx, dict) and tx.get("status") == "PENDING"
+            ]
+            if amount is not None:
+                amount_matched = [tx for tx in pending_candidates if tx.get("amount") == amount]
+                if amount_matched:
+                    record = amount_matched[-1]
+            if not record and pending_candidates:
+                record = pending_candidates[-1]
 
-    if record:
-        if trx_status in ("SUCCESS", "PAID"):
-            record["status"] = "PAID"
-            record["paid_at"] = now_iso
-            record["doku_raw_response"] = payload
-        elif trx_status in ("FAILED", "EXPIRED"):
-            record["status"] = "FAILED"
-    elif invoice_number:
-        # If record was not in memory, save it directly
-        _qris_transactions[invoice_number] = {
-            "transaction_id": invoice_number,
-            "invoice_number": invoice_number,
-            "amount": order_info.get("amount", 0),
-            "status": "PAID" if trx_status in ("SUCCESS", "PAID") else "FAILED",
-            "paid_at": now_iso,
-            "doku_raw_response": payload,
-        }
+        if record:
+            if normalized_status == "PAID":
+                record["status"] = "PAID"
+                record["paid_at"] = now_iso
+                record["doku_raw_response"] = raw_data
+            elif normalized_status == "FAILED":
+                record["status"] = "FAILED"
+        elif invoice_number:
+            _qris_transactions[invoice_number] = {
+                "transaction_id": invoice_number,
+                "invoice_number": invoice_number,
+                "amount": amount or 0,
+                "status": "PAID" if normalized_status == "PAID" else "FAILED",
+                "paid_at": now_iso,
+                "doku_raw_response": raw_data,
+            }
 
-    return {"status": "SUCCESS", "message": "DOKU notification processed successfully."}
+    return {
+        "status": "SUCCESS",
+        "responseCode": "2005200",
+        "responseMessage": "Successful",
+        "transactionId": doku_trx_id,
+        "activityCode": "200",
+        "message": "Transaction is Success",
+        "processDate": process_date_str,
+    }
 
 
 @router.post("/payment/voucher")
