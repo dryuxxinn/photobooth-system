@@ -31,6 +31,7 @@ interface QrisRecord {
   amount: number;
   package_name?: string;
   qr_string: string;
+  nmid?: string | null;
   checkout_url?: string | null;
   status: "PENDING" | "PAID" | "FAILED";
   provider?: string;
@@ -335,12 +336,17 @@ export function PaymentModal({
                 <div className="relative flex flex-col items-center">
                   <QRCodeSVG
                     value={qrisTx.qr_string}
-                    size={200}
+                    size={224}
                     bgColor="#FFFFFF"
-                    fgColor="#3F3D56"
-                    level="M"
+                    fgColor="#1E1B4B"
+                    level="L"
                     includeMargin
                   />
+                  {qrisTx.nmid && (
+                    <span className="text-[10px] font-mono font-bold text-sweet-muted">
+                      NMID: {qrisTx.nmid}
+                    </span>
+                  )}
                   <div className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-heading font-bold text-sweet-muted">
                     <span
                       aria-hidden="true"

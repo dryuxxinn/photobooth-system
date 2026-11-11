@@ -259,7 +259,7 @@ def get_qris_payment_status(transaction_id: str):
             record["_last_doku_check_ts"] = now_ts
             doku = get_doku_service()
             inv_no = record.get("invoice_number") or transaction_id
-            live_check = doku.check_transaction_status(inv_no)
+            live_check = doku.check_transaction_status(inv_no, record=record)
             if live_check.get("status") == "PAID":
                 record["status"] = "PAID"
                 record["paid_at"] = datetime.now(timezone.utc).isoformat()
@@ -283,7 +283,7 @@ def confirm_qris_payment(transaction_id: str):
     if record.get("status") != "PAID":
         doku = get_doku_service()
         inv_no = record.get("invoice_number") or transaction_id
-        live_check = doku.check_transaction_status(inv_no)
+        live_check = doku.check_transaction_status(inv_no, record=record)
         if live_check.get("status") == "PAID":
             record["status"] = "PAID"
             record["paid_at"] = datetime.now(timezone.utc).isoformat()

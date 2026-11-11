@@ -13,21 +13,19 @@ from typing import Any, Dict, Optional, Tuple
 
 from backend.app.core.config import PROJECT_ROOT, settings
 
-logger = logging.getLogger("doku_payment")
+logger = logging.getLogger("uvicorn.error")
 
 
 class DokuPaymentService:
     """
     Production-ready DOKU Payment Gateway integration service (No Simulation Fallback).
     Supports:
-    1. DOKU Direct QRIS MPM (/qris-merchant-presentation/v2/generate-qr-code)
-    2. DOKU Checkout v1 (/checkout/v1/payment) with QRIS channel
-    3. DOKU Order Status Inquiry (/orders/v1/status/{invoice_number})
-    4. Multi-format DOKU Webhook Notification parsing & verification:
-       - DOKU Non-SNAP / Jokul HTTP Notification (JSON + HMAC-SHA256 Signature header)
-       - DOKU QRIS V2 / Direct Notification (Query params / x-www-form-urlencoded with TXNSTATUS & WORDS)
-       - DOKU SNAP BI Notification (/v1.0/qr/qr-mpm-notify with latestTransactionStatus == "00")
-       - DOKU Dashboard URL Verification / Handshake Pings
+    1. DOKU Checkout v1 (/checkout/v1/payment) + Direct EMVCo QRIS extraction
+       (/checkout/v1/payment/{token_id}/generate-qris -> returns real 000201010212... QRIS string & NMID)
+    2. DOKU Direct QRIS Status Inquiry (/checkout/v1/payment/{token_id}/qris-status)
+       and DOKU Order Status Inquiry (/orders/v1/status/{invoice_number})
+    3. DOKU Direct QRIS MPM (/qris-merchant-presentation/v2/generate-qr-code)
+    4. Multi-format DOKU Webhook Notification parsing & verification
     """
 
     def __init__(self):
@@ -71,6 +69,12 @@ class DokuPaymentService:
         return "https://api-sandbox.doku.com"
 
     @property
+    def checkout_base_url(self) -> str:
+        if self.is_production:
+            return "https://checkout.doku.com"
+        return "https://checkout-sandbox.doku.com"
+
+    @property
     def is_configured(self) -> bool:
         self._refresh_config()
         return bool(self.client_id and self.secret_key)
@@ -90,10 +94,6 @@ class DokuPaymentService:
     ) -> str:
         """
         Generate DOKU Non-SNAP HMAC-SHA256 signature header.
-        For POST requests (digest provided):
-            Client-Id:<id>\nRequest-Id:<id>\nRequest-Timestamp:<time>\nRequest-Target:<path>\nDigest:<digest>
-        For GET requests (digest is None):
-            Client-Id:<id>\nRequest-Id:<id>\nRequest-Timestamp:<time>\nRequest-Target:<path>
         """
         component = (
             f"Client-Id:{self.client_id}\n"
@@ -120,7 +120,6 @@ class DokuPaymentService:
     ) -> Tuple[bool, str]:
         """
         Verify incoming DOKU notification signature across multiple DOKU notification formats.
-        Allows DOKU Dashboard test pings or QRIS V2 notifications that use WORDS instead of Signature header.
         """
         self._refresh_config()
         if not (self.client_id and self.secret_key):
@@ -303,7 +302,7 @@ class DokuPaymentService:
             return json.loads(res_body)
 
     def _call_doku_get(self, target_path: str) -> Dict[str, Any]:
-        """Send an authenticated GET request to DOKU Non-SNAP API (e.g. Order Status Inquiry)."""
+        """Send an authenticated GET request to DOKU Non-SNAP API (Order Status Inquiry)."""
         now_dt = datetime.now(timezone.utc)
         timestamp = now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         request_id = str(uuid.uuid4())
@@ -327,20 +326,89 @@ class DokuPaymentService:
             res_body = response.read().decode("utf-8")
             return json.loads(res_body)
 
-    def check_transaction_status(self, invoice_number: str) -> Dict[str, Any]:
+    def _exchange_checkout_token_for_qris(self, token_id: str) -> Dict[str, Any]:
         """
-        Actively query DOKU Order Status API (/orders/v1/status/{invoice_number})
-        to verify real payment status directly from DOKU server.
+        Exchange a DOKU Checkout v2 token_id for the actual EMVCo QRIS string (000201010212...),
+        NMID, systrace, and access_token via DOKU Checkout's generate-qris endpoint.
+        """
+        url = f"{self.checkout_base_url}/checkout/v1/payment/{urllib.parse.quote(token_id)}/generate-qris"
+        body_bytes = json.dumps({"token_id": token_id}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body_bytes,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0",
+            },
+            method="POST",
+        )
+        logger.info(f"Exchanging DOKU Checkout token for EMVCo QRIS: POST {url}")
+        with urllib.request.urlopen(req, timeout=15) as response:
+            res_body = response.read().decode("utf-8")
+            return json.loads(res_body)
+
+    def check_transaction_status(
+        self,
+        invoice_number: str,
+        record: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Actively verify real payment status directly from DOKU server:
+        1. Checks DOKU Checkout QRIS Status (/checkout/v1/payment/{token_id}/qris-status) if token metadata is present.
+        2. Checks DOKU Order Status API (/orders/v1/status/{invoice_number}).
         """
         if not self.is_configured:
             return {"status": "PENDING", "message": "DOKU credentials not configured"}
 
+        # 1. Check DOKU Checkout QRIS direct status if token_id, systrace, and access_token exist
+        if record:
+            token_id = record.get("_doku_token_id")
+            systrace = record.get("_doku_systrace")
+            access_token = record.get("_doku_access_token")
+            if token_id and systrace and access_token:
+                qris_status_url = (
+                    f"{self.checkout_base_url}/checkout/v1/payment/{urllib.parse.quote(str(token_id))}/qris-status"
+                )
+                payload = {
+                    "tokenId": str(token_id),
+                    "systrace": systrace,
+                    "accessToken": str(access_token),
+                    "lang": "id",
+                }
+                req = urllib.request.Request(
+                    qris_status_url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "Mozilla/5.0",
+                    },
+                    method="POST",
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        q_data = json.loads(resp.read().decode("utf-8"))
+                        q_status = str(q_data.get("status") or "").upper()
+                        if q_status in ("SUCCESS", "PAID", "SETTLED", "SUCCESS_CHECK_STATUS_PAYMENT_QRIS"):
+                            logger.info(f"DOKU QRIS status confirmed PAID for {invoice_number}")
+                            return {"status": "PAID", "raw_data": q_data}
+                        if q_status in ("FAILED", "EXPIRED"):
+                            return {"status": "FAILED", "raw_data": q_data}
+                except urllib.error.HTTPError as e:
+                    # HTTP 400 {"message":["Transaksi belum terbayar"]} is normal while waiting for scan
+                    pass
+                except Exception as e:
+                    logger.debug(f"DOKU Checkout qris-status check error: {e}")
+
+        # 2. Check DOKU Order Status Inquiry API (/orders/v1/status/{invoice_number})
         target_path = f"/orders/v1/status/{urllib.parse.quote(invoice_number)}"
         try:
             data = self._call_doku_get(target_path)
             trx_obj = data.get("transaction") if isinstance(data.get("transaction"), dict) else {}
             tx_status = str(trx_obj.get("status") or data.get("status") or "").upper()
             if tx_status in ("SUCCESS", "PAID", "SETTLED"):
+                logger.info(f"DOKU Order Status confirmed PAID for {invoice_number}")
                 return {"status": "PAID", "raw_data": data}
             if tx_status in ("FAILED", "EXPIRED", "CANCELLED", "VOID"):
                 return {"status": "FAILED", "raw_data": data}
@@ -360,8 +428,9 @@ class DokuPaymentService:
         package_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Generate a real Dynamic QRIS payment via DOKU Production/Sandbox API.
-        No simulation fallback: raises RuntimeError if credentials are missing or DOKU API fails.
+        Generate a real Dynamic EMVCo QRIS payment via DOKU Production/Sandbox API.
+        Extracts the pure EMVCo QRIS string (000201010212...) so mobile banking / e-wallet apps
+        can scan the QR directly on the kiosk screen.
         """
         if not self.is_configured:
             raise RuntimeError(
@@ -378,7 +447,76 @@ class DokuPaymentService:
 
         errors: list[str] = []
 
-        # 1. Primary: DOKU Direct QRIS MPM (/qris-merchant-presentation/v2/generate-qr-code)
+        # 1. Primary: DOKU Checkout v1 (/checkout/v1/payment) + Direct EMVCo QRIS extraction
+        try:
+            checkout_payload = {
+                "order": {
+                    "amount": amount,
+                    "invoice_number": invoice_number,
+                    "currency": "IDR",
+                    "line_items": [
+                        {
+                            "name": package_name or self.merchant_name,
+                            "price": amount,
+                            "quantity": 1,
+                        }
+                    ],
+                },
+                "payment": {
+                    "payment_due_date": self.expiry_minutes,
+                    "payment_method_types": ["QRIS"],
+                },
+                "customer": {
+                    "id": f"CUST-{invoice_number[-8:]}",
+                    "name": "Pelanggan Photobooth",
+                    "email": "customer@sweetstudio.id",
+                },
+            }
+            data = self._call_doku_post("/checkout/v1/payment", checkout_payload)
+            resp_inner = data.get("response") if isinstance(data.get("response"), dict) else data
+            payment_obj = resp_inner.get("payment") if isinstance(resp_inner.get("payment"), dict) else {}
+            payment_url = payment_obj.get("url") or ""
+            token_id = payment_obj.get("token_id") or (
+                payment_url.rstrip("/").split("/")[-1] if payment_url else ""
+            )
+
+            if token_id:
+                qris_res = self._exchange_checkout_token_for_qris(token_id)
+                qr_code_str = qris_res.get("qr_code")
+                if qr_code_str and str(qr_code_str).startswith("000201"):
+                    logger.info(
+                        f"Generated real EMVCo Dynamic QRIS for invoice {invoice_number} "
+                        f"(NMID: {qris_res.get('nmid')})"
+                    )
+                    return {
+                        "provider": "DOKU",
+                        "invoice_number": invoice_number,
+                        "transaction_id": invoice_number,
+                        "amount": amount,
+                        "package_name": package_name or self.merchant_name,
+                        "qr_string": qr_code_str,
+                        "nmid": qris_res.get("nmid"),
+                        "checkout_url": payment_url or None,
+                        "status": "PENDING",
+                        "expires_at": expiry_iso,
+                        "created_at": timestamp,
+                        "paid_at": None,
+                        "_doku_token_id": token_id,
+                        "_doku_systrace": qris_res.get("systrace"),
+                        "_doku_access_token": qris_res.get("access_token"),
+                    }
+                errors.append(f"Token QRIS exchange did not return EMVCo qr_code: {qris_res}")
+            else:
+                errors.append(f"Checkout v1 missing token_id: {json.dumps(data)}")
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+            errors.append(f"Checkout QRIS HTTP {e.code}: {err_body}")
+            logger.error(f"DOKU Checkout QRIS failed with HTTP {e.code}: {err_body}")
+        except Exception as e:
+            errors.append(f"Checkout QRIS Error: {e}")
+            logger.error(f"DOKU Checkout QRIS failed: {e}")
+
+        # 2. Secondary: DOKU Direct QRIS MPM (/qris-merchant-presentation/v2/generate-qr-code)
         try:
             qris_payload: Dict[str, Any] = {
                 "order": {
@@ -411,6 +549,7 @@ class DokuPaymentService:
                     "amount": amount,
                     "package_name": package_name or self.merchant_name,
                     "qr_string": qr_content,
+                    "nmid": qris_data.get("nmid"),
                     "checkout_url": None,
                     "status": "PENDING",
                     "expires_at": qris_data.get("expiration_time") or expiry_iso,
@@ -420,69 +559,8 @@ class DokuPaymentService:
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
             errors.append(f"Direct QRIS HTTP {e.code}: {err_body}")
-            logger.info(
-                f"DOKU Direct QRIS returned HTTP {e.code} ({err_body}). Trying DOKU Checkout v1..."
-            )
         except Exception as e:
             errors.append(f"Direct QRIS Error: {e}")
-            logger.info(f"DOKU Direct QRIS failed ({e}). Trying DOKU Checkout v1...")
-
-        # 2. Secondary: DOKU Checkout v1 API (/checkout/v1/payment) with QRIS channel
-        try:
-            checkout_payload = {
-                "order": {
-                    "amount": amount,
-                    "invoice_number": invoice_number,
-                    "currency": "IDR",
-                    "line_items": [
-                        {
-                            "name": package_name or self.merchant_name,
-                            "price": amount,
-                            "quantity": 1,
-                        }
-                    ],
-                },
-                "payment": {
-                    "payment_due_date": self.expiry_minutes,
-                    "payment_method_types": ["QRIS"],
-                },
-                "customer": {
-                    "id": f"CUST-{invoice_number[-8:]}",
-                    "name": "Pelanggan Photobooth",
-                    "email": "customer@sweetstudio.id",
-                },
-            }
-            data = self._call_doku_post("/checkout/v1/payment", checkout_payload)
-            resp_inner = data.get("response") if isinstance(data.get("response"), dict) else data
-            payment_obj = resp_inner.get("payment") if isinstance(resp_inner.get("payment"), dict) else {}
-            qr_or_url = (
-                payment_obj.get("qr_content")
-                or payment_obj.get("qr_string")
-                or payment_obj.get("url")
-            )
-            if qr_or_url:
-                logger.info(f"Generated DOKU Checkout QRIS for invoice {invoice_number}")
-                return {
-                    "provider": "DOKU",
-                    "invoice_number": invoice_number,
-                    "transaction_id": invoice_number,
-                    "amount": amount,
-                    "package_name": package_name or self.merchant_name,
-                    "qr_string": qr_or_url,
-                    "checkout_url": payment_obj.get("url"),
-                    "status": "PENDING",
-                    "expires_at": expiry_iso,
-                    "created_at": timestamp,
-                    "paid_at": None,
-                }
-            errors.append(f"Checkout v1 empty response: {json.dumps(data)}")
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-            errors.append(f"Checkout v1 HTTP {e.code}: {err_body}")
-            logger.error(f"DOKU Checkout v1 failed with HTTP {e.code}: {err_body}")
-        except Exception as e:
-            errors.append(f"Checkout v1 Error: {e}")
-            logger.error(f"DOKU Checkout v1 failed: {e}")
 
         error_summary = " | ".join(errors) if errors else "Tidak ada respons valid dari server DOKU."
         raise RuntimeError(f"Gagal membuat QRIS DOKU: {error_summary}")

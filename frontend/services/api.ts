@@ -218,6 +218,7 @@ export const photoboothApi = {
       amount: number;
       package_name: string;
       qr_string: string;
+      nmid?: string | null;
       checkout_url?: string | null;
       status: "PENDING" | "PAID" | "FAILED";
       created_at: string;
@@ -235,6 +236,7 @@ export const photoboothApi = {
       amount: number;
       package_name: string;
       qr_string: string;
+      nmid?: string | null;
       checkout_url?: string | null;
       status: "PENDING" | "PAID" | "FAILED";
       created_at: string;
