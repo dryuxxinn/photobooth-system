@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BoothOperatorConfig,
   CameraStatus as CameraStatusType,
@@ -21,29 +22,40 @@ import {
   loadOperatorConfig,
   saveOperatorConfig,
 } from "@/lib/config";
+import { AuthUser, clearStoredAuth, getStoredAuthUser } from "@/lib/auth";
 import { getApiBaseUrl, photoboothApi } from "@/services/api";
 import { CameraStatus } from "./CameraStatus";
 import { PrinterStatus } from "./PrinterStatus";
 import { SessionTable } from "./SessionTable";
 import { TemplateManager } from "./TemplateManager";
+import { PricingManager } from "./PricingManager";
+import { HardwareManager } from "./HardwareManager";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   ArrowLeftIcon,
   BowIcon,
+  CameraIcon,
+  PaletteIcon,
+  QrIcon,
   RefreshIcon,
+  SettingsIcon,
   SparkleIcon,
+  SpinnerIcon,
 } from "@/components/icons";
 
 type AdminSection =
   | "dashboard"
   | "sessions"
+  | "pricing"
   | "templates"
-  | "print_jobs"
-  | "settings";
+  | "hardware";
 
 export function Dashboard() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeNav, setActiveNav] = useState<AdminSection>("dashboard");
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [cameraStatus, setCameraStatus] = useState<CameraStatusType | null>(
@@ -64,8 +76,27 @@ export function Dashboard() {
   const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const user = getStoredAuthUser();
+    if (!user) {
+      router.push("/admin/login");
+      return;
+    }
+    setCurrentUser(user);
+    setAuthChecked(true);
+  }, [router]);
+
+  const isAdmin = currentUser?.role === "admin";
+
+  useEffect(() => {
     setOperatorConfig(loadOperatorConfig());
   }, []);
+
+  // Force navigate away from pricing tab if employee role
+  useEffect(() => {
+    if (authChecked && !isAdmin && activeNav === "pricing") {
+      setActiveNav("dashboard");
+    }
+  }, [authChecked, isAdmin, activeNav]);
 
   const refreshAll = useCallback(async () => {
     const [hlth, cam, prn, hist, jobs, tplData, serverCfg] = await Promise.all([
@@ -93,8 +124,10 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll]);
+    if (authChecked) {
+      refreshAll();
+    }
+  }, [authChecked, refreshAll]);
 
   const handleUpdateConfig = (next: BoothOperatorConfig) => {
     setOperatorConfig(next);
@@ -118,6 +151,23 @@ export function Dashboard() {
     setTimeout(() => setResetMessage(null), 4000);
   };
 
+  const handleLogout = () => {
+    clearStoredAuth();
+    photoboothApi.logout().catch(() => null);
+    router.push("/admin/login");
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-dvh flex flex-col justify-center items-center sweet-bg text-sweet-text space-y-3">
+        <SpinnerIcon className="size-8 text-sweet-primaryStrong animate-spin" />
+        <p className="text-xs font-heading font-bold text-sweet-muted">
+          Memverifikasi akses operator...
+        </p>
+      </div>
+    );
+  }
+
   const totalSessions = sessions.length;
   const successfulPrints = printJobs.filter(
     (j) => j.status === "COMPLETED" || j.status === "completed"
@@ -127,20 +177,32 @@ export function Dashboard() {
       (j) => j.status !== "COMPLETED" && j.status !== "completed"
     ).length + sessions.filter((s) => s.status === "ERROR").length;
 
-  const navItems: { id: AdminSection; label: string }[] = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "sessions", label: "Sessions" },
-    { id: "templates", label: "Templates" },
-    { id: "print_jobs", label: "Print Jobs" },
-    { id: "settings", label: "Settings" },
+  const allNavItems: {
+    id: AdminSection;
+    label: string;
+    icon: React.ReactNode;
+    adminOnly?: boolean;
+  }[] = [
+    { id: "dashboard", label: "Ringkasan", icon: <BowIcon className="size-4" /> },
+    { id: "sessions", label: "Riwayat Sesi", icon: <SparkleIcon className="size-4" /> },
+    {
+      id: "pricing",
+      label: "Tarif & Keuangan",
+      icon: <QrIcon className="size-4" />,
+      adminOnly: true,
+    },
+    { id: "templates", label: "Desain Frame", icon: <PaletteIcon className="size-4" /> },
+    { id: "hardware", label: "Hardware & Kios", icon: <SettingsIcon className="size-4" /> },
   ];
+
+  const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <div className="min-h-dvh flex flex-col sweet-bg text-sweet-text">
-      {/* Admin Top Header (Section 7) */}
+      {/* Admin Top Header */}
       <header className="px-6 py-4 bg-sweet-surface border-b-2 border-sweet-border flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="size-11 rounded-2xl bg-sweet-primary flex items-center justify-center text-sweet-primaryStrong border border-sweet-primaryStrong/40">
+          <div className="size-11 rounded-2xl bg-sweet-primary flex items-center justify-center text-sweet-primaryStrong border border-sweet-primaryStrong/40 shadow-xs">
             <BowIcon className="size-6" />
           </div>
           <div>
@@ -149,16 +211,31 @@ export function Dashboard() {
               <SparkleIcon className="size-4 text-sweet-primaryStrong" />
             </h1>
             <p className="text-xs text-sweet-muted">
-              Dashboard Operator • Pemantauan Kamera, Printer, Storage & Riwayat
-              Sesi
+              Portal Operator Photobooth • Bilik Kamera, Printer & Riwayat Sesi
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Role & User Badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-sweet-bg border border-sweet-border text-xs font-heading shadow-xs">
+            <span
+              className={`size-2 rounded-full ${
+                isAdmin ? "bg-sweet-primaryStrong" : "bg-[#1f6a45]"
+              }`}
+            />
+            <span className="font-bold text-sweet-text">
+              {currentUser?.display_name || (isAdmin ? "Administrator" : "Petugas Booth")}
+            </span>
+            <span className="text-[10px] text-sweet-muted font-mono uppercase px-1.5 py-0.5 rounded-md bg-white border border-sweet-border">
+              {currentUser?.role || "user"}
+            </span>
+          </div>
+
           <StatusBadge tone={health ? "success" : "error"}>
             {health ? "System Online" : "API Offline"}
           </StatusBadge>
+
           <Button
             variant="surface"
             size="md"
@@ -167,13 +244,23 @@ export function Dashboard() {
           >
             Refresh
           </Button>
+
           <Link
             href="/"
-            className="min-h-[48px] px-5 py-2.5 rounded-full bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-sm inline-flex items-center gap-2 border-2 border-sweet-primaryStrong/40 shadow-sweet"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs inline-flex items-center gap-1.5 border border-sweet-primaryStrong/40 shadow-xs transition-colors"
           >
-            <ArrowLeftIcon className="size-4" />
+            <ArrowLeftIcon className="size-3.5" />
             <span>Layar Kiosk</span>
           </Link>
+
+          <Button
+            variant="danger"
+            size="md"
+            onClick={handleLogout}
+            className="text-xs"
+          >
+            Keluar
+          </Button>
         </div>
       </header>
 
@@ -197,7 +284,12 @@ export function Dashboard() {
                         : "hover:bg-sweet-blush/50 text-sweet-muted"
                     }`}
                   >
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className={active ? "text-sweet-primaryStrong" : "text-sweet-muted"}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </div>
                     {active && (
                       <span
                         aria-hidden="true"
@@ -279,31 +371,55 @@ export function Dashboard() {
                 </Card>
               </div>
 
-              {/* TODAY'S SESSIONS Summary Box */}
+              {/* TODAY'S SESSIONS & REVENUE Summary Box */}
               <Card variant="blush" padding="md" className="space-y-3">
-                <h2 className="font-heading font-extrabold text-base text-sweet-text">
-                  TODAY&apos;S SESSIONS
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-white border border-sweet-border">
-                    <span className="text-xs text-sweet-muted block">
-                      Total Sessions
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-heading font-extrabold text-base text-sweet-text">
+                    RINGKASAN OPERASIONAL HARI INI
+                  </h2>
+                  <span className="text-xs text-sweet-muted font-heading font-semibold">
+                    Tarif Aktif: Rp {(operatorConfig.sessionPriceIdr ?? 35000).toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-2xl bg-white border border-sweet-border shadow-xs">
+                    <span className="text-xs text-sweet-muted block font-heading font-semibold">
+                      Total Sesi Dimulai
                     </span>
                     <span className="font-heading font-extrabold text-2xl text-sweet-text">
                       {totalSessions}
                     </span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-sweet-border">
-                    <span className="text-xs text-sweet-muted block">
-                      Successful Prints
+                  <div className="p-4 rounded-2xl bg-white border border-sweet-border shadow-xs">
+                    <span className="text-xs text-sweet-muted block font-heading font-semibold">
+                      Sesi Sukses / Cetak
                     </span>
                     <span className="font-heading font-extrabold text-2xl text-sweet-success">
                       {successfulPrints}
                     </span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-sweet-border">
-                    <span className="text-xs text-sweet-muted block">
-                      Failed Jobs / Errors
+                  {isAdmin ? (
+                    <div className="p-4 rounded-2xl bg-white border border-sweet-border shadow-xs">
+                      <span className="text-xs text-sweet-muted block font-heading font-semibold">
+                        Estimasi Omset Selesai
+                      </span>
+                      <span className="font-heading font-extrabold text-2xl text-sweet-primaryStrong">
+                        Rp {(successfulPrints * (operatorConfig.sessionPriceIdr ?? 35000)).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-white border border-sweet-border shadow-xs">
+                      <span className="text-xs text-sweet-muted block font-heading font-semibold">
+                        Status Bilik Kiosk
+                      </span>
+                      <span className="font-heading font-extrabold text-xl text-sweet-text">
+                        {health?.session_state || "SIAP / IDLE"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="p-4 rounded-2xl bg-white border border-sweet-border shadow-xs">
+                    <span className="text-xs text-sweet-muted block font-heading font-semibold">
+                      Gagal / Error
                     </span>
                     <span className="font-heading font-extrabold text-2xl text-sweet-error">
                       {failedJobs}
@@ -313,11 +429,24 @@ export function Dashboard() {
               </Card>
 
               {/* Recent Sessions Table */}
-              <SessionTable sessions={sessions.slice(0, 10)} />
+              <SessionTable
+                sessions={sessions.slice(0, 10)}
+                onRefresh={refreshAll}
+              />
             </>
           )}
 
-          {activeNav === "sessions" && <SessionTable sessions={sessions} />}
+          {activeNav === "sessions" && (
+            <SessionTable sessions={sessions} onRefresh={refreshAll} />
+          )}
+
+          {isAdmin && activeNav === "pricing" && (
+            <PricingManager
+              config={operatorConfig}
+              onUpdateConfig={handleUpdateConfig}
+              sessions={sessions}
+            />
+          )}
 
           {activeNav === "templates" && (
             <TemplateManager
@@ -326,24 +455,19 @@ export function Dashboard() {
               config={operatorConfig}
               onUpdateConfig={handleUpdateConfig}
               onRefreshTemplates={refreshAll}
+              readOnly={!isAdmin}
             />
           )}
 
-          {activeNav === "print_jobs" && (
-            <PrinterStatus
-              printerStatus={printerStatus}
-              printJobs={printJobs}
-              showJobsTable
-            />
-          )}
-
-          {activeNav === "settings" && (
-            <TemplateManager
-              templates={templates}
-              frameThemes={frameThemes}
+          {activeNav === "hardware" && (
+            <HardwareManager
               config={operatorConfig}
               onUpdateConfig={handleUpdateConfig}
-              onRefreshTemplates={refreshAll}
+              cameraStatus={cameraStatus}
+              printerStatus={printerStatus}
+              printJobs={printJobs}
+              onRefresh={refreshAll}
+              readOnly={!isAdmin}
             />
           )}
         </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   BoothOperatorConfig,
   FrameThemeOption,
@@ -11,7 +11,7 @@ import { LayoutMock } from "@/components/LayoutMock";
 import { PHOTO_FILTERS } from "@/lib/defaults";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { CameraIcon, CheckIcon } from "@/components/icons";
+import { CheckIcon, PaletteIcon, SparkleIcon } from "@/components/icons";
 
 interface TemplateManagerProps {
   templates: TemplateOption[];
@@ -19,9 +19,8 @@ interface TemplateManagerProps {
   config: BoothOperatorConfig;
   onUpdateConfig: (next: BoothOperatorConfig) => void;
   onRefreshTemplates?: () => Promise<void>;
+  readOnly?: boolean;
 }
-
-const QUICK_PRICE_PRESETS = [1000, 15000, 25000, 35000, 50000];
 
 export function TemplateManager({
   templates,
@@ -29,43 +28,10 @@ export function TemplateManager({
   config,
   onUpdateConfig,
   onRefreshTemplates,
+  readOnly = false,
 }: TemplateManagerProps) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [overlayNotice, setOverlayNotice] = useState<string | null>(null);
-  const [priceInput, setPriceInput] = useState<string>(
-    String(config.sessionPriceIdr ?? 35000)
-  );
-  const [voucherInput, setVoucherInput] = useState<string>(
-    (config.voucherCodes || ["SWEET2026", "VIPFREE"]).join(", ")
-  );
-  const [priceSavedNotice, setPriceSavedNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPriceInput(String(config.sessionPriceIdr ?? 35000));
-  }, [config.sessionPriceIdr]);
-
-  useEffect(() => {
-    setVoucherInput(
-      (config.voucherCodes || ["SWEET2026", "VIPFREE"]).join(", ")
-    );
-  }, [config.voucherCodes]);
-
-  const commitPrice = (rawVal: string, showNotice = false) => {
-    const digitsOnly = rawVal.replace(/\D/g, "");
-    const parsed = parseInt(digitsOnly, 10);
-    const nextPrice = Number.isNaN(parsed) || parsed < 1 ? 1000 : parsed;
-    setPriceInput(String(nextPrice));
-    onUpdateConfig({
-      ...config,
-      sessionPriceIdr: nextPrice,
-    });
-    if (showNotice) {
-      setPriceSavedNotice(
-        `Harga Rp ${nextPrice.toLocaleString("id-ID")} tersimpan ke server`
-      );
-      setTimeout(() => setPriceSavedNotice(null), 3500);
-    }
-  };
 
   const handleOverlayFileChange = async (
     templateId: string,
@@ -128,437 +94,26 @@ export function TemplateManager({
   };
 
   return (
-    <div className="space-y-5">
-      {/* Pengaturan Hardware & Arsitektur Kamera Kiosk (Hanya via Admin) */}
+    <div className="space-y-6">
+      {/* Warna Frame Default & Filter Kamera Awal */}
       <Card variant="surface" padding="md" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="font-heading font-bold text-base text-sweet-text flex items-center gap-2">
-              <CameraIcon className="size-5 text-sweet-primaryStrong" />
-              <span>Arsitektur Kamera Kiosk & Hardware</span>
+              <PaletteIcon className="size-5 text-sweet-primaryStrong" />
+              <span>Tema Warna Frame & Filter Awal</span>
             </h3>
             <p className="text-xs text-sweet-muted">
-              Tentukan arsitektur kamera yang digunakan pada kios pelanggan (diatur khusus via admin).
-            </p>
-          </div>
-          <StatusBadge tone={config.cameraSourceMode === "server" ? "lavender" : "pink"}>
-            Mode: {config.cameraSourceMode === "server" ? "DSLR Server (USB)" : "iPad / Capture Card"}
-          </StatusBadge>
-        </div>
-
-        {/* Pilihan Mode Arsitektur */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => {
-              const next = { ...config, cameraSourceMode: "webcam" as const };
-              onUpdateConfig(next);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("dryu_camera_source", "webcam");
-              }
-            }}
-            className={`p-4 rounded-3xl border-3 text-left transition-all flex flex-col gap-2 ${
-              config.cameraSourceMode !== "server"
-                ? "bg-[#FFF0F5] border-[#F472B6] shadow-sweet ring-2 ring-[#FBCFE8]"
-                : "bg-sweet-bg border-sweet-border hover:bg-white"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-heading font-extrabold text-sm text-[#3F3D56] flex items-center gap-2">
-                <span>iPad / Dongle Capture Card</span>
-              </span>
-              {config.cameraSourceMode !== "server" && (
-                <span className="text-[#F472B6] font-bold text-xs inline-flex items-center gap-1">
-                  <CheckIcon className="size-3.5" />
-                  <span>Aktif</span>
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-sweet-muted">
-              Kamera DSLR dihubungkan via HDMI-to-USB-C Capture Card ke iPad / browser tablet. Praktis, portable, dan langsung live di layar.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const next = { ...config, cameraSourceMode: "server" as const };
-              onUpdateConfig(next);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("dryu_camera_source", "server");
-              }
-            }}
-            className={`p-4 rounded-3xl border-3 text-left transition-all flex flex-col gap-2 ${
-              config.cameraSourceMode === "server"
-                ? "bg-[#F3E8FF] border-[#A855F7] shadow-sweet ring-2 ring-[#E9D5FF]"
-                : "bg-sweet-bg border-sweet-border hover:bg-white"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-heading font-extrabold text-sm text-[#3F3D56] flex items-center gap-2">
-                <span>DSLR USB Laptop (Server Backend)</span>
-              </span>
-              {config.cameraSourceMode === "server" && (
-                <span className="text-[#A855F7] font-bold text-xs inline-flex items-center gap-1">
-                  <CheckIcon className="size-3.5" />
-                  <span>Aktif</span>
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-sweet-muted">
-              Kamera DSLR dihubungkan langsung via kabel USB ke Laptop/Mini PC server (driver gPhoto2). Mendukung sinkronisasi lampu studio flash & shutter mekanik.
-            </p>
-          </button>
-        </div>
-
-        {/* Pengaturan Tambahan: Mirror & Default Filter */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Cermin Kamera (Mirror Viewfinder)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Balik preview kamera secara horizontal layaknya cermin (disarankan untuk kenyamanan selfie)
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={config.isMirrored ?? true}
-              onChange={(e) => {
-                const next = { ...config, isMirrored: e.target.checked };
-                onUpdateConfig(next);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("dryu_camera_mirrored", String(e.target.checked));
-                }
-              }}
-              className="size-5 accent-sweet-primaryStrong"
-            />
-          </label>
-
-          <div className="p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border flex flex-col justify-between gap-1.5">
-            <label htmlFor="admin-default-filter" className="font-heading font-bold text-sm text-sweet-text block">
-              Filter Kamera Awal Kiosk:
-            </label>
-            <select
-              id="admin-default-filter"
-              value={config.defaultFilter || "original"}
-              onChange={(e) => {
-                const next = { ...config, defaultFilter: e.target.value };
-                onUpdateConfig(next);
-              }}
-              className="w-full min-h-[44px] px-3 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
-            >
-              {PHOTO_FILTERS.map((flt) => (
-                <option key={flt.id} value={flt.id}>
-                  {flt.name} - {flt.desc}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      <Card variant="surface" padding="md" className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="font-heading font-bold text-base text-sweet-text">
-              Konfigurasi Alur Kiosk & Default Frame
-            </h3>
-            <p className="text-xs text-sweet-muted">
-              Atur tahapan sesi dan template default tanpa perlu mengubah kode
-              aplikasi.
+              Atur nuansa visual default yang tampil saat pelanggan mulai memilih frame.
             </p>
           </div>
           <StatusBadge tone="success">Tersimpan Otomatis</StatusBadge>
         </div>
 
-        {/* Pilihan Mode Halaman Start Kiosk (Attract Mode) */}
-        <div className="p-4 rounded-3xl bg-sweet-bg border border-sweet-border space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Tampilan Halaman Start Kiosk (Attract Mode)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Pilih apakah halaman awal menampilkan 3D photostrip statis atau kamera live untuk menarik perhatian pengunjung sekitar.
-              </span>
-            </div>
-            <StatusBadge tone={config.welcomeScreenMode === "live_preview" ? "pink" : "lavender"}>
-              {config.welcomeScreenMode === "live_preview" ? "Live Mirror Kamera" : "Statis 3D Strips"}
-            </StatusBadge>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => onUpdateConfig({ ...config, welcomeScreenMode: "static" })}
-              className={`min-h-[64px] p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col gap-1.5 active:scale-95 ${
-                (config.welcomeScreenMode ?? "static") === "static"
-                  ? "bg-[#FFF0F5] border-[#DB2777] shadow-xs"
-                  : "bg-white hover:bg-sweet-surface border-sweet-border"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-heading font-extrabold text-xs text-[#3F3D56]">
-                  1. Showcase Statis (3D Floating Strips)
-                </span>
-                {(config.welcomeScreenMode ?? "static") === "static" && (
-                  <CheckIcon className="size-4 text-sweet-primaryStrong" />
-                )}
-              </div>
-              <p className="text-[11px] text-sweet-muted">
-                Menampilkan panggung 3D dengan 3 contoh photostrip yang melayang estetik per desain Sweet Studio.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onUpdateConfig({ ...config, welcomeScreenMode: "live_preview" })}
-              className={`min-h-[64px] p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col gap-1.5 active:scale-95 ${
-                config.welcomeScreenMode === "live_preview"
-                  ? "bg-[#FFF0F5] border-[#DB2777] shadow-xs"
-                  : "bg-white hover:bg-sweet-surface border-sweet-border"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-heading font-extrabold text-xs text-[#3F3D56]">
-                  2. Live Preview (Cermin Interaktif / Attract Mode)
-                </span>
-                {config.welcomeScreenMode === "live_preview" && (
-                  <CheckIcon className="size-4 text-sweet-primaryStrong" />
-                )}
-              </div>
-              <p className="text-[11px] text-sweet-muted">
-                Kamera aktif live di layar beranda sebagai cermin. Menarik perhatian orang sekitar untuk merapikan pose dan menekan tombol mulai.
-              </p>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Tahap Pilih Foto (Photo Selection)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Tampilkan halaman review foto sebelum memilih frame
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={config.enablePhotoSelectionStep}
-              onChange={(e) =>
-                onUpdateConfig({
-                  ...config,
-                  enablePhotoSelectionStep: e.target.checked,
-                })
-              }
-              className="size-5 accent-sweet-primaryStrong"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Tahap Pilih Frame (Template Selection)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Tampilkan halaman Pick Your Vibe setelah foto diambil
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={config.enableTemplateSelectionStep}
-              onChange={(e) =>
-                onUpdateConfig({
-                  ...config,
-                  enableTemplateSelectionStep: e.target.checked,
-                })
-              }
-              className="size-5 accent-sweet-primaryStrong"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Efek Suara Kiosk (Beep, Shutter & Chime)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Bunyikan audio saat hitung mundur dan kamera memotret
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={config.enableSoundEffects ?? true}
-              onChange={(e) =>
-                onUpdateConfig({
-                  ...config,
-                  enableSoundEffects: e.target.checked,
-                })
-              }
-              className="size-5 accent-sweet-primaryStrong"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-sweet-bg border border-sweet-border cursor-pointer">
-            <div>
-              <span className="font-heading font-bold text-sm text-sweet-text block">
-                Mode Berbayar (QRIS & Kode Voucher)
-              </span>
-              <span className="text-xs text-sweet-muted">
-                Wajibkan pembayaran QRIS / Voucher sebelum sesi dimulai
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={config.requirePayment ?? false}
-              onChange={(e) =>
-                onUpdateConfig({
-                  ...config,
-                  requirePayment: e.target.checked,
-                })
-              }
-              className="size-5 accent-sweet-primaryStrong"
-            />
-          </label>
-        </div>
-
-        {/* Pengaturan Harga QRIS, Voucher & Public Cloud Share URL */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div>
-            <label
-              htmlFor="admin-price-input"
-              className="font-heading font-bold text-xs text-sweet-text block mb-1"
-            >
-              Harga Sesi QRIS (Rp):
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="admin-price-input"
-                name="session_price_idr"
-                type="text"
-                inputMode="numeric"
-                placeholder="Contoh: 35000"
-                value={priceInput}
-                onChange={(e) => {
-                  const digitsOnly = e.target.value.replace(/\D/g, "");
-                  setPriceInput(digitsOnly);
-                  const numeric = parseInt(digitsOnly, 10);
-                  if (!Number.isNaN(numeric) && numeric >= 1) {
-                    onUpdateConfig({
-                      ...config,
-                      sessionPriceIdr: numeric,
-                    });
-                  }
-                }}
-                onBlur={() => commitPrice(priceInput, true)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    commitPrice(priceInput, true);
-                  }
-                }}
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
-              />
-              <button
-                type="button"
-                onClick={() => commitPrice(priceInput, true)}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 shrink-0"
-              >
-                Simpan
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {QUICK_PRICE_PRESETS.map((preset) => {
-                const isActive = (config.sessionPriceIdr ?? 35000) === preset;
-                return (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => commitPrice(String(preset), true)}
-                    className={`min-h-[44px] px-3 py-1.5 rounded-lg text-[11px] font-heading font-bold border transition-colors ${
-                      isActive
-                        ? "bg-sweet-primary text-sweet-text border-sweet-primaryStrong"
-                        : "bg-white text-sweet-muted border-sweet-border hover:border-sweet-primaryStrong"
-                    }`}
-                  >
-                    Rp {preset.toLocaleString("id-ID")}
-                  </button>
-                );
-              })}
-            </div>
-            {priceSavedNotice && (
-              <p className="mt-1.5 text-[11px] font-heading font-bold text-[#1f6a45]">
-                {priceSavedNotice}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="admin-vouchers-input"
-              className="font-heading font-bold text-xs text-sweet-text block mb-1"
-            >
-              Kode Voucher Kasir (pisahkan koma):
-            </label>
-            <input
-              id="admin-vouchers-input"
-              name="voucher_codes"
-              type="text"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              value={voucherInput}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setVoucherInput(raw);
-                onUpdateConfig({
-                  ...config,
-                  voucherCodes: raw
-                    .split(",")
-                    .map((s) => s.trim().toUpperCase())
-                    .filter(Boolean),
-                });
-              }}
-              className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="admin-cloud-url-input"
-              className="font-heading font-bold text-xs text-sweet-text block mb-1"
-            >
-              Domain Cloud / Public Share URL (Opsional):
-            </label>
-            <input
-              id="admin-cloud-url-input"
-              name="public_share_base_url"
-              type="url"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              placeholder="Contoh: https://booth.sweetstudio.id"
-              value={config.publicShareBaseUrl || ""}
-              onChange={(e) =>
-                onUpdateConfig({
-                  ...config,
-                  publicShareBaseUrl: e.target.value,
-                })
-              }
-              className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-semibold text-sweet-text"
-            />
-          </div>
-        </div>
-
-        <div>
-          <span className="font-heading font-bold text-xs text-sweet-text block mb-2">
-            Warna Frame Default:
+        {/* Pilihan Warna Frame Bawaan */}
+        <div className="space-y-2">
+          <span className="font-heading font-bold text-xs text-sweet-text block">
+            Warna Frame Bawaan:
           </span>
           <div className="flex flex-wrap gap-2">
             {frameThemes.map((theme) => {
@@ -571,33 +126,64 @@ export function TemplateManager({
                   onClick={() =>
                     onUpdateConfig({ ...config, defaultFrameColor: theme.id })
                   }
-                  className={`min-h-[44px] px-3.5 py-1.5 rounded-xl border-2 text-xs font-heading font-bold flex items-center gap-2 ${
+                  className={`min-h-[44px] px-3.5 py-1.5 rounded-xl border-2 text-xs font-heading font-bold flex items-center gap-2 transition-colors ${
                     isDefault
-                      ? "bg-sweet-blush border-sweet-primaryStrong text-sweet-text"
-                      : "bg-sweet-bg border-sweet-border text-sweet-muted"
+                      ? "bg-sweet-blush border-sweet-primaryStrong text-sweet-text shadow-xs"
+                      : "bg-sweet-bg border-sweet-border text-sweet-muted hover:text-sweet-text"
                   }`}
                 >
                   <span
                     aria-hidden="true"
                     style={{ backgroundColor: theme.hex }}
-                    className="size-4 rounded-full border border-sweet-text/20"
+                    className="size-4 rounded-full border border-sweet-text/20 shrink-0"
                   />
                   <span>{theme.name}</span>
+                  {isDefault && <CheckIcon className="size-3.5 text-sweet-primaryStrong" />}
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* Pilihan Filter Foto Default */}
+        <div className="pt-2 border-t border-sweet-border/60">
+          <label
+            htmlFor="admin-default-filter"
+            className="font-heading font-bold text-xs text-sweet-text block mb-1.5"
+          >
+            Filter Foto Awal Kiosk:
+          </label>
+          <select
+            id="admin-default-filter"
+            value={config.defaultFilter || "original"}
+            onChange={(e) => {
+              onUpdateConfig({ ...config, defaultFilter: e.target.value });
+            }}
+            className="w-full max-w-md min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
+          >
+            {PHOTO_FILTERS.map((flt) => (
+              <option key={flt.id} value={flt.id}>
+                {flt.name} : {flt.desc}
+              </option>
+            ))}
+          </select>
+        </div>
       </Card>
 
+      {/* Daftar Template & Upload Custom PNG Overlay */}
       <Card variant="surface" padding="md" className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-heading font-bold text-base text-sweet-text">
-            Daftar Template & Custom PNG Overlay ({config.enabledTemplateIds.length} Aktif dari{" "}
-            {templates.length})
-          </h3>
-          <span className="text-xs text-sweet-muted">
-            Unggah file PNG transparan (Canva/Photoshop) untuk mengganti dekorasi frame bawaan
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-heading font-bold text-base text-sweet-text flex items-center gap-2">
+              <SparkleIcon className="size-5 text-sweet-primaryStrong" />
+              <span>Katalog Template Photobooth</span>
+            </h3>
+            <p className="text-xs text-sweet-muted">
+              {config.enabledTemplateIds.length} dari {templates.length} template aktif di Kiosk. Unggah file PNG transparan untuk mengganti frame bawaan.
+            </p>
+          </div>
+          <span className="text-xs text-sweet-muted font-heading font-semibold">
+            Format: PNG Transparan (Alpha Channel)
           </span>
         </div>
 
@@ -605,7 +191,7 @@ export function TemplateManager({
           <div
             role="status"
             aria-live="polite"
-            className="p-3 rounded-2xl bg-sweet-blush/70 border border-sweet-primaryStrong/40 text-xs font-heading font-bold text-sweet-text"
+            className="p-3.5 rounded-2xl bg-sweet-blush/80 border border-sweet-primaryStrong/40 text-xs font-heading font-bold text-sweet-text"
           >
             {overlayNotice}
           </div>
@@ -618,14 +204,14 @@ export function TemplateManager({
             return (
               <div
                 key={tpl.id}
-                className={`p-4 rounded-3xl border-2 flex flex-col justify-between gap-3 ${
+                className={`p-4 rounded-3xl border-2 flex flex-col justify-between gap-3 transition-colors ${
                   isEnabled
                     ? "bg-sweet-bg border-sweet-primary"
                     : "bg-sweet-surface/60 border-sweet-border opacity-60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-24 w-20 flex items-center justify-center shrink-0 bg-white rounded-2xl p-1.5 border border-sweet-border">
+                  <div className="h-24 w-20 flex items-center justify-center shrink-0 bg-white rounded-2xl p-1.5 border border-sweet-border shadow-xs">
                     <LayoutMock
                       template={tpl}
                       frameColorId={tpl.default_frame || config.defaultFrameColor}
@@ -640,55 +226,63 @@ export function TemplateManager({
                     <div className="text-xs text-sweet-muted">
                       {tpl.aspect_label} • {tpl.photos_required} Pose
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                       {isDefault && (
                         <StatusBadge tone="pink">Template Utama</StatusBadge>
                       )}
                       {tpl.has_custom_overlay && (
-                        <StatusBadge tone="success">PNG Overlay Aktif</StatusBadge>
+                        <StatusBadge tone="success">PNG Aktif</StatusBadge>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Custom PNG Overlay Upload / Remove Controls */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-sweet-border/60">
-                  <label
-                    htmlFor={`overlay-upload-${tpl.id}`}
-                    className="min-h-[44px] flex-1 px-3 py-1.5 rounded-xl bg-white hover:bg-sweet-blush border border-sweet-border text-[11px] font-heading font-bold text-sweet-text cursor-pointer inline-flex items-center justify-center text-center transition-colors"
-                  >
-                    {uploadingId === tpl.id
-                      ? "Mengunggah..."
-                      : tpl.has_custom_overlay
-                        ? "Ganti PNG Overlay"
-                        : "+ Upload PNG Overlay"}
-                  </label>
-                  <input
-                    id={`overlay-upload-${tpl.id}`}
-                    type="file"
-                    accept="image/png"
-                    disabled={uploadingId === tpl.id}
-                    onChange={(e) => handleOverlayFileChange(tpl.id, e)}
-                    className="sr-only"
-                  />
-                  {tpl.has_custom_overlay && (
-                    <button
-                      type="button"
-                      disabled={uploadingId === tpl.id}
-                      onClick={() => handleRemoveOverlay(tpl.id)}
-                      className="min-h-[44px] px-3 py-1.5 rounded-xl bg-[#FCECEE] hover:bg-[#F7D6DA] text-sweet-error text-[11px] font-heading font-bold border border-[#EABAC0]"
+                {/* Upload & Remove PNG Overlay Controls (Khusus Admin) */}
+                {!readOnly ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-sweet-border/60">
+                    <label
+                      htmlFor={`overlay-upload-${tpl.id}`}
+                      className="min-h-[44px] flex-1 px-3 py-1.5 rounded-xl bg-white hover:bg-sweet-blush border border-sweet-border text-[11px] font-heading font-bold text-sweet-text cursor-pointer inline-flex items-center justify-center text-center transition-colors"
                     >
-                      Hapus PNG
-                    </button>
-                  )}
-                </div>
+                      {uploadingId === tpl.id
+                        ? "Mengunggah..."
+                        : tpl.has_custom_overlay
+                          ? "Ganti PNG Overlay"
+                          : "+ Upload PNG Frame"}
+                    </label>
+                    <input
+                      id={`overlay-upload-${tpl.id}`}
+                      type="file"
+                      accept="image/png"
+                      disabled={uploadingId === tpl.id}
+                      onChange={(e) => handleOverlayFileChange(tpl.id, e)}
+                      className="sr-only"
+                    />
+                    {tpl.has_custom_overlay && (
+                      <button
+                        type="button"
+                        disabled={uploadingId === tpl.id}
+                        onClick={() => handleRemoveOverlay(tpl.id)}
+                        className="min-h-[44px] px-3 py-1.5 rounded-xl bg-[#FCECEE] hover:bg-[#F7D6DA] text-sweet-error text-[11px] font-heading font-bold border border-[#EABAC0]"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-sweet-border/60 text-[10px] text-sweet-muted font-heading font-semibold">
+                    Overlay hanya dapat diubah oleh Administrator
+                  </div>
+                )}
 
+                {/* Toggle Aktif & Jadikan Default */}
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
+                    disabled={readOnly}
                     aria-pressed={isEnabled}
                     onClick={() => toggleTemplateEnabled(tpl.id)}
-                    className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl text-xs font-heading font-bold border inline-flex items-center justify-center gap-1.5 ${
+                    className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl text-xs font-heading font-bold border inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed ${
                       isEnabled
                         ? "bg-sweet-primary text-sweet-text border-sweet-primaryStrong/40"
                         : "bg-white text-sweet-muted border-sweet-border"
@@ -698,7 +292,7 @@ export function TemplateManager({
                     <span>{isEnabled ? "Aktif" : "Nonaktif"}</span>
                   </button>
 
-                  {isEnabled && !isDefault && (
+                  {!readOnly && isEnabled && !isDefault && (
                     <button
                       type="button"
                       onClick={() =>

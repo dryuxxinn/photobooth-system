@@ -465,6 +465,75 @@ def print_session(session_id: str, payload: PrintRequest = PrintRequest()):
         )
 
 
+@router.post("/{session_id}/reprint")
+def reprint_session(session_id: str, payload: PrintRequest = PrintRequest()):
+    """
+    Reprint an active or completed historical session without restarting a new session.
+    Used by operator when paper jams or a customer requests an extra copy.
+    """
+    manager = get_session_manager()
+    sess = manager.get_current_session()
+    if not sess or sess.get("session_id") != session_id:
+        sess = get_db_service().get_session(session_id)
+
+    if not sess:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sesi '{session_id}' tidak ditemukan di memori aktif maupun riwayat database.",
+        )
+
+    image_path_str = sess.get("processed_image_path")
+    if not image_path_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Foto strip untuk sesi ini belum tersedia atau gagal diproses.",
+        )
+
+    from pathlib import Path
+
+    image_file = Path(image_path_str)
+    if not image_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File cetak '{image_file}' tidak ditemukan di penyimpanan server.",
+        )
+
+    printer = get_printer_service()
+    if not printer.is_ready():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Printer sedang offline atau kehabisan kertas.",
+        )
+
+    copies = max(1, payload.copies or 1)
+    print_res = printer.print_file(file_path=image_file, copies=copies)
+    job_id = print_res.get("job_id", f"job_{uuid.uuid4().hex[:8]}")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    job_record = {
+        "id": job_id,
+        "session_id": session_id,
+        "photo_id": None,
+        "file_path": str(image_file),
+        "copies": copies,
+        "status": print_res.get("status", "COMPLETED"),
+        "printer_name": print_res.get("printer_name", "CUPS / Simulated"),
+        "error_message": print_res.get("error_message"),
+        "created_at": print_res.get("created_at", now_iso),
+        "completed_at": print_res.get("completed_at", now_iso),
+    }
+    try:
+        get_db_service().save_print_job(job_record)
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": f"Berhasil mengirim {copies} lembar ke printer.",
+        "job_id": job_id,
+        "session_id": session_id,
+    }
+
+
 @router.post("/{session_id}/complete")
 def complete_session(session_id: str):
     manager = get_session_manager()

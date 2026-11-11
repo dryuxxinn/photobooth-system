@@ -68,10 +68,22 @@ export function resolveStorageUrl(
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("dryu_auth_token")
+      : null;
+
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders["Authorization"] = `Bearer ${token}`;
+    authHeaders["X-Auth-Token"] = token;
+  }
+
   const res = await fetch(`${getApiBaseUrl()}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(options?.headers || {}),
     },
   });
@@ -292,6 +304,17 @@ export const photoboothApi = {
       body: JSON.stringify({ session_id: sessionId, copies }),
     }),
 
+  reprintSession: (sessionId: string, copies: number = 1) =>
+    request<{
+      success: boolean;
+      message: string;
+      job_id: string;
+      session_id: string;
+    }>(`/session/${encodeURIComponent(sessionId)}/reprint`, {
+      method: "POST",
+      body: JSON.stringify({ copies }),
+    }),
+
   completeSession: (sessionId: string) =>
     request<{ message: string; session: SessionDetail }>(
       `/session/${sessionId}/complete`,
@@ -326,5 +349,34 @@ export const photoboothApi = {
     request<CameraStatus>("/camera/config", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  login: (username: string, password: string) =>
+    request<{
+      success: boolean;
+      token: string;
+      user: {
+        username: string;
+        role: "admin" | "user";
+        display_name: string;
+      };
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  getAuthMe: () =>
+    request<{
+      success: boolean;
+      user: {
+        username: string;
+        role: "admin" | "user";
+        display_name: string;
+      };
+    }>("/auth/me"),
+
+  logout: () =>
+    request<{ success: boolean; message: string }>("/auth/logout", {
+      method: "POST",
     }),
 };

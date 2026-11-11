@@ -19,6 +19,22 @@ class SessionTransitionError(Exception):
     pass
 
 
+def generate_session_id() -> str:
+    """
+    Generate a human-readable, timestamp-based session identifier with GMT timezone.
+    Format: SESS-YYYYMMDD-HHMMSS-GMT{offset}
+    Example: SESS-20261112-024225-GMT+7
+    """
+    now_local = datetime.now().astimezone()
+    offset = now_local.utcoffset()
+    total_seconds = int(offset.total_seconds()) if offset else 0
+    sign = "+" if total_seconds >= 0 else "-"
+    hours = abs(total_seconds) // 3600
+    minutes = (abs(total_seconds) % 3600) // 60
+    gmt_part = f"GMT{sign}{hours}:{minutes:02d}" if minutes else f"GMT{sign}{hours}"
+    return f"SESS-{now_local.strftime('%Y%m%d-%H%M%S')}-{gmt_part}"
+
+
 class SessionManager:
     """
     Manages active photobooth session, enforces state machine transitions,
@@ -135,7 +151,7 @@ class SessionManager:
             )
             frame_color = tpl_meta.get("default_frame", "cream") if tpl_meta else "cream"
 
-        session_id = f"sess_{uuid.uuid4().hex[:8]}"
+        session_id = generate_session_id()
         now = datetime.now(timezone.utc).isoformat()
 
         self.current_session = {

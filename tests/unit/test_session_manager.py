@@ -11,7 +11,8 @@ def test_session_lifecycle():
     # Start session
     session = manager.start_session(customer_name="Test User", photos_required=2)
     assert manager.state == SessionState.STARTED
-    assert session["session_id"].startswith("sess_")
+    assert session["session_id"].startswith("SESS-")
+    assert "GMT" in session["session_id"]
     assert session["photos_required"] == 2
     assert session["photos_taken"] == 0
 

@@ -11,6 +11,7 @@ from backend.app.api.camera import router as camera_router
 from backend.app.api.session import router as session_router
 from backend.app.api.printer import router as printer_router
 from backend.app.api.ar import router as ar_router
+from backend.app.api.auth import router as auth_router
 from backend.app.services.session import get_session_manager
 from backend.app.services.camera import get_camera_service
 from backend.app.services.printer import get_printer_service
@@ -37,6 +38,7 @@ settings.TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/template-assets", StaticFiles(directory=str(settings.TEMPLATES_DIR)), name="template_assets")
 
 # Include Routers
+app.include_router(auth_router)
 app.include_router(camera_router)
 app.include_router(session_router)
 app.include_router(printer_router)

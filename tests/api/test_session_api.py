@@ -47,7 +47,13 @@ def test_session_api_flow(test_client: TestClient):
     comp_res = test_client.post(f"/session/{session_id}/complete")
     assert comp_res.status_code == 200
 
-    # 7. Back to IDLE
+    # 7. Operator Reprint historical completed session
+    reprint_res = test_client.post(f"/session/{session_id}/reprint", json={"copies": 1})
+    assert reprint_res.status_code == 200
+    assert reprint_res.json()["success"] is True
+    assert reprint_res.json()["session_id"] == session_id
+
+    # 8. Back to IDLE
     curr_after = test_client.get("/session/current")
     assert curr_after.json()["active"] is False
 
