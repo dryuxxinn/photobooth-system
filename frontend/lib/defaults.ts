@@ -217,9 +217,51 @@ export const PHOTO_FILTERS: PhotoFilterOption[] = [
   },
 ];
 
-export function getFilterCss(filterId?: string): string {
+export function buildFilterCssFromParams(params?: {
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  temperature?: number;
+  tint?: number;
+  smoothness?: number;
+}): string {
+  if (!params) return "none";
+  const b = params.brightness ?? 1.0;
+  const c = params.contrast ?? 1.0;
+  const s = params.saturation ?? 1.0;
+  const t = params.temperature ?? 1.0;
+  const tint = params.tint ?? 1.0;
+
+  const parts: string[] = [];
+  if (Math.abs(b - 1.0) > 0.01) parts.push(`brightness(${b.toFixed(2)})`);
+  if (Math.abs(c - 1.0) > 0.01) parts.push(`contrast(${c.toFixed(2)})`);
+  if (Math.abs(s - 1.0) > 0.01) parts.push(`saturate(${s.toFixed(2)})`);
+  if (t > 1.02) {
+    const sep = Math.min(0.4, (t - 1.0) * 0.8);
+    parts.push(`sepia(${sep.toFixed(2)})`);
+  } else if (t < 0.98) {
+    const deg = Math.round((1.0 - t) * 35);
+    parts.push(`hue-rotate(${deg}deg)`);
+  }
+  if (tint > 1.02) {
+    const deg = Math.round((tint - 1.0) * -20);
+    parts.push(`hue-rotate(${deg}deg)`);
+  }
+  return parts.length > 0 ? parts.join(" ") : "none";
+}
+
+export function getFilterCss(
+  filterId?: string,
+  customPresets?: { id: string; params: Record<string, number> }[]
+): string {
+  if (!filterId) return "none";
   const found = PHOTO_FILTERS.find((f) => f.id === filterId);
-  return found?.css || "none";
+  if (found) return found.css;
+  if (customPresets) {
+    const custom = customPresets.find((p) => p.id === filterId);
+    if (custom) return buildFilterCssFromParams(custom.params);
+  }
+  return "none";
 }
 
 export const DEFAULT_STICKER_OPTIONS = [

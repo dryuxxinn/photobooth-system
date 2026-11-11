@@ -30,6 +30,8 @@ import { SessionTable } from "./SessionTable";
 import { TemplateManager } from "./TemplateManager";
 import { PricingManager } from "./PricingManager";
 import { HardwareManager } from "./HardwareManager";
+import { FilterStudio } from "./FilterStudio";
+import { FinanceReport } from "./FinanceReport";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -49,6 +51,8 @@ type AdminSection =
   | "dashboard"
   | "sessions"
   | "pricing"
+  | "finance"
+  | "filters"
   | "templates"
   | "hardware";
 
@@ -91,9 +95,13 @@ export function Dashboard() {
     setOperatorConfig(loadOperatorConfig());
   }, []);
 
-  // Force navigate away from pricing tab if employee role
+  // Force navigate away from pricing/finance tab if employee role
   useEffect(() => {
-    if (authChecked && !isAdmin && activeNav === "pricing") {
+    if (
+      authChecked &&
+      !isAdmin &&
+      (activeNav === "pricing" || activeNav === "finance")
+    ) {
       setActiveNav("dashboard");
     }
   }, [authChecked, isAdmin, activeNav]);
@@ -187,11 +195,22 @@ export function Dashboard() {
     { id: "sessions", label: "Riwayat Sesi", icon: <SparkleIcon className="size-4" /> },
     {
       id: "pricing",
-      label: "Tarif & Keuangan",
+      label: "Tarif & Kasir",
       icon: <QrIcon className="size-4" />,
       adminOnly: true,
     },
-    { id: "templates", label: "Desain Frame", icon: <PaletteIcon className="size-4" /> },
+    {
+      id: "finance",
+      label: "Laporan & Margin",
+      icon: <SparkleIcon className="size-4" />,
+      adminOnly: true,
+    },
+    {
+      id: "filters",
+      label: "Studio Filter",
+      icon: <PaletteIcon className="size-4" />,
+    },
+    { id: "templates", label: "Desain Frame", icon: <BowIcon className="size-4" /> },
     { id: "hardware", label: "Hardware & Kios", icon: <SettingsIcon className="size-4" /> },
   ];
 
@@ -446,6 +465,16 @@ export function Dashboard() {
               onUpdateConfig={handleUpdateConfig}
               sessions={sessions}
             />
+          )}
+
+          {isAdmin && activeNav === "finance" && (
+            <FinanceReport
+              currentSessionPrice={operatorConfig.sessionPriceIdr ?? 35000}
+            />
+          )}
+
+          {activeNav === "filters" && (
+            <FilterStudio readOnly={!isAdmin} />
           )}
 
           {activeNav === "templates" && (

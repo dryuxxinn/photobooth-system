@@ -315,10 +315,72 @@ class ImageProcessor:
             return canvas
 
     @staticmethod
-    def apply_filter(img: Image.Image, filter_name: str = "original") -> Image.Image:
-        """Apply optional color filter preset to a PIL image."""
+    def apply_filter(
+        img: Image.Image,
+        filter_name: str = "original",
+        custom_params: Optional[Dict[str, Any]] = None,
+    ) -> Image.Image:
+        """Apply color filter preset or custom dynamic calibration parameters to a PIL image."""
         mode = (filter_name or "original").lower().strip()
         rgb = img.convert("RGB")
+
+        # Check if custom filter preset parameters exist
+        active_params = custom_params
+        if not active_params and mode not in (
+            "original", "none", "", "bw", "mono", "warm", "contrast",
+            "vintage", "sepia", "vivid", "beauty", "cool", "y2k", "rosy", "moody"
+        ):
+            try:
+                try:
+                    from app.services.storage.database import get_db_service
+                except ImportError:
+                    from backend.app.services.storage.database import get_db_service
+                db_filter = get_db_service().get_custom_filter(filter_name)
+                if db_filter and db_filter.get("is_active", 1):
+                    active_params = db_filter
+            except Exception:
+                pass
+
+        if active_params:
+            smoothness = float(active_params.get("smoothness", 0.0) or 0.0)
+            if smoothness > 0.01:
+                smoothed = rgb.filter(ImageFilter.SMOOTH_MORE)
+                rgb = Image.blend(rgb, smoothed, min(0.65, max(0.05, smoothness)))
+
+            sat = float(active_params.get("saturation", 1.0) or 1.0)
+            if abs(sat - 1.0) > 0.01:
+                rgb = ImageEnhance.Color(rgb).enhance(max(0.0, sat))
+
+            cnt = float(active_params.get("contrast", 1.0) or 1.0)
+            if abs(cnt - 1.0) > 0.01:
+                rgb = ImageEnhance.Contrast(rgb).enhance(max(0.2, cnt))
+
+            bri = float(active_params.get("brightness", 1.0) or 1.0)
+            if abs(bri - 1.0) > 0.01:
+                rgb = ImageEnhance.Brightness(rgb).enhance(max(0.2, bri))
+
+            temp = float(active_params.get("temperature", 1.0) or 1.0)
+            tint = float(active_params.get("tint", 1.0) or 1.0)
+            if abs(temp - 1.0) > 0.01 or abs(tint - 1.0) > 0.01:
+                r, g, b = rgb.split()
+                if temp > 1.0:
+                    r_factor = 1.0 + (temp - 1.0) * 0.45
+                    b_factor = max(0.2, 1.0 - (temp - 1.0) * 0.35)
+                else:
+                    r_factor = max(0.2, 1.0 - (1.0 - temp) * 0.35)
+                    b_factor = 1.0 + (1.0 - temp) * 0.45
+
+                if tint > 1.0:
+                    g_factor = max(0.2, 1.0 - (tint - 1.0) * 0.25)
+                else:
+                    g_factor = 1.0 + (1.0 - tint) * 0.25
+
+                r = r.point(lambda i: min(255, max(0, int(i * r_factor))))
+                g = g.point(lambda i: min(255, max(0, int(i * g_factor))))
+                b = b.point(lambda i: min(255, max(0, int(i * b_factor))))
+                rgb = Image.merge("RGB", (r, g, b))
+            return rgb
+
         if mode in ("original", "none", ""):
             return rgb
         elif mode in ("bw", "mono"):

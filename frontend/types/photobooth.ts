@@ -183,3 +183,63 @@ export interface BoothOperatorConfig {
   defaultArPreset?: string;
   welcomeScreenMode?: "static" | "live_preview";
 }
+
+export interface CustomFilterPreset {
+  id: string;
+  name: string;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  tint: number;
+  smoothness: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SettlementRule {
+  id?: string;
+  name: string;
+  basis: "PER_PHOTO" | "PER_SETTLEMENT";
+  deduction_type: "FIXED" | "PERCENT";
+  value: number;
+  min_threshold?: number;
+  is_active: boolean;
+}
+
+export interface SettlementCalculationResult {
+  period: { start_date: string; end_date: string };
+  session_price_idr: number;
+  total_sessions: number;
+  completed_sessions: number;
+  total_prints: number;
+  gross_revenue: number;
+  formatted_gross_revenue: string;
+  total_deductions: number;
+  formatted_total_deductions: string;
+  net_profit: number;
+  formatted_net_profit: string;
+  net_margin_pct: number;
+  deductions_breakdown: Array<{
+    id?: string;
+    name: string;
+    basis: string;
+    deduction_type: string;
+    rate: number;
+    amount: number;
+    formatted_amount: string;
+    description: string;
+  }>;
+  sessions_detail: Array<{
+    session_id: string;
+    customer_name: string;
+    template_id: string;
+    status: string;
+    photos_taken: number;
+    started_at: string;
+    completed_at: string;
+    nominal_idr: number;
+    formatted_nominal: string;
+  }>;
+}

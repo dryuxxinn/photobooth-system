@@ -78,6 +78,32 @@ class DatabaseService:
                     value_json TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS custom_filter_presets (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    brightness REAL NOT NULL DEFAULT 1.0,
+                    contrast REAL NOT NULL DEFAULT 1.0,
+                    saturation REAL NOT NULL DEFAULT 1.0,
+                    temperature REAL NOT NULL DEFAULT 1.0,
+                    tint REAL NOT NULL DEFAULT 1.0,
+                    smoothness REAL NOT NULL DEFAULT 0.0,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS settlement_rules (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    basis TEXT NOT NULL,
+                    deduction_type TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    min_threshold REAL NOT NULL DEFAULT 0.0,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
             # Safely add new columns if upgrading an existing SQLite database
@@ -320,6 +346,138 @@ class DatabaseService:
                 (json.dumps(merged), now_iso),
             )
         return merged
+
+    def list_custom_filters(self, only_active: bool = False) -> List[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            query = "SELECT * FROM custom_filter_presets"
+            if only_active:
+                query += " WHERE is_active = 1"
+            query += " ORDER BY created_at ASC"
+            rows = conn.execute(query).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_custom_filter(self, filter_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM custom_filter_presets WHERE id = ? LIMIT 1",
+                (filter_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def save_custom_filter(self, filter_data: Dict[str, Any]) -> Dict[str, Any]:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        filter_id = filter_data.get("id") or f"filter_{uuid.uuid4().hex[:8]}"
+        name = filter_data.get("name") or "Custom Preset"
+        brightness = float(filter_data.get("brightness", 1.0))
+        contrast = float(filter_data.get("contrast", 1.0))
+        saturation = float(filter_data.get("saturation", 1.0))
+        temperature = float(filter_data.get("temperature", 1.0))
+        tint = float(filter_data.get("tint", 1.0))
+        smoothness = float(filter_data.get("smoothness", 0.0))
+        is_active = 1 if filter_data.get("is_active", True) else 0
+
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO custom_filter_presets (
+                    id, name, brightness, contrast, saturation,
+                    temperature, tint, smoothness, is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    brightness = excluded.brightness,
+                    contrast = excluded.contrast,
+                    saturation = excluded.saturation,
+                    temperature = excluded.temperature,
+                    tint = excluded.tint,
+                    smoothness = excluded.smoothness,
+                    is_active = excluded.is_active,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    filter_id,
+                    name,
+                    brightness,
+                    contrast,
+                    saturation,
+                    temperature,
+                    tint,
+                    smoothness,
+                    is_active,
+                    filter_data.get("created_at", now_iso),
+                    now_iso,
+                ),
+            )
+        return self.get_custom_filter(filter_id) or filter_data
+
+    def delete_custom_filter(self, filter_id: str) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM custom_filter_presets WHERE id = ?", (filter_id,)
+            )
+            return cur.rowcount > 0
+
+    def list_settlement_rules(self, only_active: bool = False) -> List[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            query = "SELECT * FROM settlement_rules"
+            if only_active:
+                query += " WHERE is_active = 1"
+            query += " ORDER BY created_at ASC"
+            rows = conn.execute(query).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_settlement_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM settlement_rules WHERE id = ? LIMIT 1", (rule_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def save_settlement_rule(self, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        rule_id = rule_data.get("id") or f"rule_{uuid.uuid4().hex[:8]}"
+        name = rule_data.get("name") or "Aturan Potongan"
+        basis = str(rule_data.get("basis", "PER_PHOTO")).upper()
+        deduction_type = str(rule_data.get("deduction_type", "FIXED")).upper()
+        value = float(rule_data.get("value", 0.0))
+        min_threshold = float(rule_data.get("min_threshold", 0.0))
+        is_active = 1 if rule_data.get("is_active", True) else 0
+
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO settlement_rules (
+                    id, name, basis, deduction_type, value, min_threshold, is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    basis = excluded.basis,
+                    deduction_type = excluded.deduction_type,
+                    value = excluded.value,
+                    min_threshold = excluded.min_threshold,
+                    is_active = excluded.is_active,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    rule_id,
+                    name,
+                    basis,
+                    deduction_type,
+                    value,
+                    min_threshold,
+                    is_active,
+                    rule_data.get("created_at", now_iso),
+                    now_iso,
+                ),
+            )
+        return self.get_settlement_rule(rule_id) or rule_data
+
+    def delete_settlement_rule(self, rule_id: str) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM settlement_rules WHERE id = ?", (rule_id,)
+            )
+            return cur.rowcount > 0
 
 
 _db_instance: Optional[DatabaseService] = None

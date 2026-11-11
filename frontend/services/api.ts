@@ -4,6 +4,7 @@ import {
   ARStickerAsset,
   BoothOperatorConfig,
   CameraStatus,
+  CustomFilterPreset,
   FrameThemeOption,
   HealthStatus,
   PhotoItem,
@@ -11,6 +12,8 @@ import {
   PrintJobRecord,
   SessionDetail,
   SessionState,
+  SettlementCalculationResult,
+  SettlementRule,
   StickerOption,
   TemplateOption,
 } from "@/types/photobooth";
@@ -379,4 +382,156 @@ export const photoboothApi = {
     request<{ success: boolean; message: string }>("/auth/logout", {
       method: "POST",
     }),
+
+  // Filter Presets Studio
+  getCustomFilters: () =>
+    request<{ success: boolean; presets: CustomFilterPreset[] }>(
+      "/filters/presets"
+    ),
+
+  saveCustomFilter: (preset: Partial<CustomFilterPreset>) =>
+    request<{ success: boolean; preset: CustomFilterPreset; message: string }>(
+      "/filters/presets",
+      {
+        method: "POST",
+        body: JSON.stringify(preset),
+      }
+    ),
+
+  deleteCustomFilter: (presetId: string) =>
+    request<{ success: boolean; message: string }>(
+      `/filters/presets/${encodeURIComponent(presetId)}`,
+      { method: "DELETE" }
+    ),
+
+  previewFilter: (payload: {
+    filter_name?: string;
+    custom_params: Record<string, number>;
+    sample_image_base64?: string;
+  }) =>
+    request<{ success: boolean; preview_data_url: string }>(
+      "/filters/preview",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
+
+  // Finance Settlement & Reports
+  getSettlementRules: () =>
+    request<{ success: boolean; rules: SettlementRule[] }>("/finance/rules"),
+
+  saveSettlementRule: (rule: Partial<SettlementRule>) =>
+    request<{ success: boolean; rule: SettlementRule; message: string }>(
+      "/finance/rules",
+      {
+        method: "POST",
+        body: JSON.stringify(rule),
+      }
+    ),
+
+  deleteSettlementRule: (ruleId: string) =>
+    request<{ success: boolean; message: string }>(
+      `/finance/rules/${encodeURIComponent(ruleId)}`,
+      { method: "DELETE" }
+    ),
+
+  calculateSettlement: (payload: {
+    start_date?: string;
+    end_date?: string;
+    target_margin_percent?: number;
+  }) =>
+    request<{ success: boolean; data: SettlementCalculationResult }>(
+      "/finance/settlement-calculate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
+
+  downloadSettlementExcel: async (payload: {
+    start_date?: string;
+    end_date?: string;
+    target_margin_percent?: number;
+  }) => {
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("dryu_auth_token")
+        : null;
+    const authHeaders: Record<string, string> = {};
+    if (token) {
+      authHeaders["Authorization"] = `Bearer ${token}`;
+      authHeaders["X-Auth-Token"] = token;
+    }
+    const res = await fetch(`${getApiBaseUrl()}/finance/export/excel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let errMsg = `Gagal mengunduh Excel (${res.status})`;
+      try {
+        const err = await res.json();
+        if (err.detail) errMsg = err.detail;
+      } catch {
+        // ignore
+      }
+      throw new Error(errMsg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Laporan_Keuangan_Photobooth_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadSettlementPdf: async (payload: {
+    start_date?: string;
+    end_date?: string;
+    target_margin_percent?: number;
+  }) => {
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("dryu_auth_token")
+        : null;
+    const authHeaders: Record<string, string> = {};
+    if (token) {
+      authHeaders["Authorization"] = `Bearer ${token}`;
+      authHeaders["X-Auth-Token"] = token;
+    }
+    const res = await fetch(`${getApiBaseUrl()}/finance/export/pdf`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let errMsg = `Gagal mengunduh PDF (${res.status})`;
+      try {
+        const err = await res.json();
+        if (err.detail) errMsg = err.detail;
+      } catch {
+        // ignore
+      }
+      throw new Error(errMsg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Laporan_Keuangan_Photobooth_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
