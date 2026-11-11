@@ -157,9 +157,13 @@ def calculate_settlement_data(
                 "name": r_name,
                 "basis": basis,
                 "deduction_type": dtype,
+                "rule_type": dtype.lower() if dtype else "fixed",
                 "rate": val,
+                "value": val,
                 "amount": amount_rounded,
+                "calculated_amount": amount_rounded,
                 "formatted_amount": format_idr(amount_rounded),
+                "min_gross_threshold": r.get("min_gross_threshold", 0) or r.get("min_threshold", 0) or 0,
                 "description": desc,
             }
         )
@@ -188,6 +192,20 @@ def calculate_settlement_data(
             }
         )
 
+    summary_obj = {
+        "gross_revenue": gross_revenue,
+        "formatted_gross_revenue": format_idr(gross_revenue),
+        "total_deductions": total_deductions,
+        "formatted_total_deductions": format_idr(total_deductions),
+        "net_profit": net_profit,
+        "formatted_net_profit": format_idr(net_profit),
+        "net_margin_percent": round(net_margin_pct, 1),
+        "completed_sessions": total_completed,
+        "total_photos_printed": total_prints,
+        "total_sessions": total_sessions_count,
+        "session_price_idr": session_price,
+    }
+
     return {
         "period": {
             "start_date": start_date or (filtered_sessions[0]["started_at"][:10] if filtered_sessions else "-"),
@@ -204,6 +222,9 @@ def calculate_settlement_data(
         "net_profit": net_profit,
         "formatted_net_profit": format_idr(net_profit),
         "net_margin_pct": round(net_margin_pct, 1),
+        "net_margin_percent": round(net_margin_pct, 1),
+        "summary": summary_obj,
+        "applied_deductions": deductions_breakdown,
         "deductions_breakdown": deductions_breakdown,
         "sessions_detail": sessions_detail,
     }
@@ -288,7 +309,7 @@ def calculate_settlement(payload: SettlementCalculateRequest):
         end_date=payload.end_date,
         custom_rules=rules_dict,
     )
-    return result
+    return {"success": True, "data": result, **result}
 
 
 @router.post("/export/excel")

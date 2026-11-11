@@ -181,6 +181,13 @@ export function FilterStudio({
       setLoading(true);
       await photoboothApi.saveCustomFilter({
         name: cleanName,
+        brightness: params.brightness,
+        contrast: params.contrast,
+        saturation: params.saturation,
+        temperature: params.temperature,
+        tint: params.tint,
+        smoothness: params.smoothness,
+        is_active: true,
         params,
       });
       setPresetName("");
@@ -662,7 +669,14 @@ export function FilterStudio({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {presets.map((preset) => {
-              const p = preset.params;
+              const p = preset.params || {
+                brightness: preset.brightness ?? 1.0,
+                contrast: preset.contrast ?? 1.0,
+                saturation: preset.saturation ?? 1.0,
+                temperature: preset.temperature ?? 1.0,
+                tint: preset.tint ?? 1.0,
+                smoothness: preset.smoothness ?? 0,
+              };
               return (
                 <div
                   key={preset.id}

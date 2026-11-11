@@ -16,23 +16,26 @@ router = APIRouter(prefix="/filters", tags=["Custom Filters"])
 class FilterPresetModel(BaseModel):
     id: Optional[str] = None
     name: str = Field(..., min_length=1)
-    brightness: float = Field(default=1.0, ge=0.5, le=1.6)
-    contrast: float = Field(default=1.0, ge=0.5, le=1.7)
-    saturation: float = Field(default=1.0, ge=0.0, le=2.0)
-    temperature: float = Field(default=1.0, ge=0.6, le=1.5)
-    tint: float = Field(default=1.0, ge=0.7, le=1.4)
-    smoothness: float = Field(default=0.0, ge=0.0, le=1.0)
+    brightness: float = Field(default=1.0, ge=0.4, le=1.8)
+    contrast: float = Field(default=1.0, ge=0.4, le=1.8)
+    saturation: float = Field(default=1.0, ge=0.0, le=2.5)
+    temperature: float = Field(default=1.0, ge=0.5, le=1.8)
+    tint: float = Field(default=1.0, ge=0.5, le=1.8)
+    smoothness: float = Field(default=0.0, ge=0.0, le=100.0)
     is_active: bool = True
+    params: Optional[Dict[str, Any]] = None
 
 
 class FilterPreviewRequest(BaseModel):
     image_data: Optional[str] = None
+    sample_image_base64: Optional[str] = None
     brightness: float = Field(default=1.0)
     contrast: float = Field(default=1.0)
     saturation: float = Field(default=1.0)
     temperature: float = Field(default=1.0)
     tint: float = Field(default=1.0)
     smoothness: float = Field(default=0.0)
+    custom_params: Optional[Dict[str, Any]] = None
 
 
 def create_sample_preview_portrait() -> Image.Image:
@@ -69,6 +72,11 @@ def save_custom_filter(payload: FilterPresetModel, request: Request):
     """Create or update a custom filter preset. Restricted to Admin."""
     require_admin(request)
     data = payload.model_dump()
+    if payload.params and isinstance(payload.params, dict):
+        for k, v in payload.params.items():
+            if k in data and v is not None:
+                data[k] = v
+
     if not data.get("id"):
         clean_id = payload.name.lower().strip().replace(" ", "_")
         clean_id = "".join(c for c in clean_id if c.isalnum() or c == "_")
@@ -94,10 +102,11 @@ def delete_custom_filter(preset_id: str, request: Request):
 @router.post("/preview")
 def preview_filter(payload: FilterPreviewRequest):
     """Render a real-time preview of the filter parameters on an image or sample portrait."""
-    if payload.image_data and "," in payload.image_data:
+    raw_b64 = payload.image_data or payload.sample_image_base64
+    if raw_b64 and "," in raw_b64:
         try:
-            b64_raw = payload.image_data.split(",", 1)[1]
-            raw_bytes = base64.b64decode(b64_raw)
+            b64_pure = raw_b64.split(",", 1)[1]
+            raw_bytes = base64.b64decode(b64_pure)
             img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
             img.thumbnail((500, 500), Image.Resampling.LANCZOS)
         except Exception:
@@ -106,6 +115,9 @@ def preview_filter(payload: FilterPreviewRequest):
         img = create_sample_preview_portrait()
 
     params = payload.model_dump()
+    if payload.custom_params and isinstance(payload.custom_params, dict):
+        params.update(payload.custom_params)
+
     filtered = ImageProcessor.apply_filter(img, custom_params=params)
 
     out_buf = io.BytesIO()
@@ -115,4 +127,5 @@ def preview_filter(payload: FilterPreviewRequest):
     return {
         "success": True,
         "preview_url": data_url,
+        "preview_data_url": data_url,
     }

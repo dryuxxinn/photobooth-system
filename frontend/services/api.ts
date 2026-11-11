@@ -406,8 +406,15 @@ export const photoboothApi = {
 
   previewFilter: (payload: {
     filter_name?: string;
-    custom_params: Record<string, number>;
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    temperature?: number;
+    tint?: number;
+    smoothness?: number;
+    custom_params?: Record<string, number>;
     sample_image_base64?: string;
+    image_data?: string;
   }) =>
     request<{ success: boolean; preview_data_url: string }>(
       "/filters/preview",

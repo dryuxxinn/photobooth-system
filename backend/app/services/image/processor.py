@@ -343,6 +343,8 @@ class ImageProcessor:
 
         if active_params:
             smoothness = float(active_params.get("smoothness", 0.0) or 0.0)
+            if smoothness > 1.0:
+                smoothness = smoothness / 100.0
             if smoothness > 0.01:
                 smoothed = rgb.filter(ImageFilter.SMOOTH_MORE)
                 rgb = Image.blend(rgb, smoothed, min(0.65, max(0.05, smoothness)))

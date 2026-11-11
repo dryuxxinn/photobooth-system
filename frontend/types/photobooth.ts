@@ -187,59 +187,65 @@ export interface BoothOperatorConfig {
 export interface CustomFilterPreset {
   id: string;
   name: string;
-  brightness: number;
-  contrast: number;
-  saturation: number;
-  temperature: number;
-  tint: number;
-  smoothness: number;
-  is_active: boolean;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  temperature?: number;
+  tint?: number;
+  smoothness?: number;
+  is_active?: boolean;
+  params?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    temperature?: number;
+    tint?: number;
+    smoothness?: number;
+  };
   created_at?: string;
   updated_at?: string;
 }
 
 export interface SettlementRule {
-  id?: string;
+  id: string;
   name: string;
-  basis: "PER_PHOTO" | "PER_SETTLEMENT";
-  deduction_type: "FIXED" | "PERCENT";
+  basis: "per_photo" | "per_settlement" | string;
+  rule_type: "percentage" | "fixed" | string;
   value: number;
-  min_threshold?: number;
+  min_gross_threshold: number;
+  description?: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SettlementCalculationResult {
-  period: { start_date: string; end_date: string };
-  session_price_idr: number;
-  total_sessions: number;
-  completed_sessions: number;
-  total_prints: number;
-  gross_revenue: number;
-  formatted_gross_revenue: string;
-  total_deductions: number;
-  formatted_total_deductions: string;
-  net_profit: number;
-  formatted_net_profit: string;
-  net_margin_pct: number;
-  deductions_breakdown: Array<{
-    id?: string;
+  period?: { start_date?: string; end_date?: string };
+  summary: {
+    gross_revenue: number;
+    total_deductions: number;
+    net_profit: number;
+    net_margin_percent: number;
+    completed_sessions: number;
+    total_photos_printed: number;
+    currency?: string;
+  };
+  applied_deductions: Array<{
     name: string;
-    basis: string;
-    deduction_type: string;
-    rate: number;
-    amount: number;
-    formatted_amount: string;
-    description: string;
+    basis: "per_photo" | "per_settlement" | string;
+    rule_type: "percentage" | "fixed" | string;
+    value: number;
+    min_gross_threshold: number;
+    calculated_amount: number;
   }>;
-  sessions_detail: Array<{
+  sessions_detail?: Array<{
     session_id: string;
-    customer_name: string;
-    template_id: string;
+    customer_name?: string;
+    template_id?: string;
     status: string;
     photos_taken: number;
     started_at: string;
-    completed_at: string;
+    completed_at?: string;
     nominal_idr: number;
-    formatted_nominal: string;
   }>;
 }
