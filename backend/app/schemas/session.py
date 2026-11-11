@@ -56,7 +56,7 @@ class CustomOverlayUploadRequest(BaseModel):
 
 
 class QrisCreateRequest(BaseModel):
-    amount: int = Field(default=35000, ge=1000)
+    amount: Optional[int] = Field(default=None, ge=1)
     package_name: Optional[str] = "Sweet Studio Regular Session"
 
 

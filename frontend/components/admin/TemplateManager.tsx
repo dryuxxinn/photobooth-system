@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BoothOperatorConfig,
   FrameThemeOption,
@@ -21,6 +21,8 @@ interface TemplateManagerProps {
   onRefreshTemplates?: () => Promise<void>;
 }
 
+const QUICK_PRICE_PRESETS = [1000, 15000, 25000, 35000, 50000];
+
 export function TemplateManager({
   templates,
   frameThemes,
@@ -30,6 +32,40 @@ export function TemplateManager({
 }: TemplateManagerProps) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [overlayNotice, setOverlayNotice] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState<string>(
+    String(config.sessionPriceIdr ?? 35000)
+  );
+  const [voucherInput, setVoucherInput] = useState<string>(
+    (config.voucherCodes || ["SWEET2026", "VIPFREE"]).join(", ")
+  );
+  const [priceSavedNotice, setPriceSavedNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPriceInput(String(config.sessionPriceIdr ?? 35000));
+  }, [config.sessionPriceIdr]);
+
+  useEffect(() => {
+    setVoucherInput(
+      (config.voucherCodes || ["SWEET2026", "VIPFREE"]).join(", ")
+    );
+  }, [config.voucherCodes]);
+
+  const commitPrice = (rawVal: string, showNotice = false) => {
+    const digitsOnly = rawVal.replace(/\D/g, "");
+    const parsed = parseInt(digitsOnly, 10);
+    const nextPrice = Number.isNaN(parsed) || parsed < 1 ? 1000 : parsed;
+    setPriceInput(String(nextPrice));
+    onUpdateConfig({
+      ...config,
+      sessionPriceIdr: nextPrice,
+    });
+    if (showNotice) {
+      setPriceSavedNotice(
+        `Harga Rp ${nextPrice.toLocaleString("id-ID")} tersimpan ke server`
+      );
+      setTimeout(() => setPriceSavedNotice(null), 3500);
+    }
+  };
 
   const handleOverlayFileChange = async (
     templateId: string,
@@ -399,24 +435,66 @@ export function TemplateManager({
             >
               Harga Sesi QRIS (Rp):
             </label>
-            <input
-              id="admin-price-input"
-              name="session_price_idr"
-              type="text"
-              inputMode="numeric"
-              value={String(config.sessionPriceIdr ?? 35000)}
-              onChange={(e) => {
-                const numeric = parseInt(
-                  e.target.value.replace(/\D/g, ""),
-                  10
+            <div className="flex items-center gap-2">
+              <input
+                id="admin-price-input"
+                name="session_price_idr"
+                type="text"
+                inputMode="numeric"
+                placeholder="Contoh: 35000"
+                value={priceInput}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, "");
+                  setPriceInput(digitsOnly);
+                  const numeric = parseInt(digitsOnly, 10);
+                  if (!Number.isNaN(numeric) && numeric >= 1) {
+                    onUpdateConfig({
+                      ...config,
+                      sessionPriceIdr: numeric,
+                    });
+                  }
+                }}
+                onBlur={() => commitPrice(priceInput, true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitPrice(priceInput, true);
+                  }
+                }}
+                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
+              />
+              <button
+                type="button"
+                onClick={() => commitPrice(priceInput, true)}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 shrink-0"
+              >
+                Simpan
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {QUICK_PRICE_PRESETS.map((preset) => {
+                const isActive = (config.sessionPriceIdr ?? 35000) === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => commitPrice(String(preset), true)}
+                    className={`min-h-[44px] px-3 py-1.5 rounded-lg text-[11px] font-heading font-bold border transition-colors ${
+                      isActive
+                        ? "bg-sweet-primary text-sweet-text border-sweet-primaryStrong"
+                        : "bg-white text-sweet-muted border-sweet-border hover:border-sweet-primaryStrong"
+                    }`}
+                  >
+                    Rp {preset.toLocaleString("id-ID")}
+                  </button>
                 );
-                onUpdateConfig({
-                  ...config,
-                  sessionPriceIdr: Number.isNaN(numeric) ? 0 : numeric,
-                });
-              }}
-              className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
-            />
+              })}
+            </div>
+            {priceSavedNotice && (
+              <p className="mt-1.5 text-[11px] font-heading font-bold text-[#1f6a45]">
+                {priceSavedNotice}
+              </p>
+            )}
           </div>
 
           <div>
@@ -434,16 +512,18 @@ export function TemplateManager({
               autoCorrect="off"
               autoCapitalize="characters"
               spellCheck={false}
-              value={(config.voucherCodes || ["SWEET2026", "VIPFREE"]).join(", ")}
-              onChange={(e) =>
+              value={voucherInput}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setVoucherInput(raw);
                 onUpdateConfig({
                   ...config,
-                  voucherCodes: e.target.value
+                  voucherCodes: raw
                     .split(",")
                     .map((s) => s.trim().toUpperCase())
                     .filter(Boolean),
-                })
-              }
+                });
+              }}
               className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
             />
           </div>

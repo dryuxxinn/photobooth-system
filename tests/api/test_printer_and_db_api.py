@@ -121,3 +121,27 @@ def test_gif_generation_overlay_payment_and_liveview(test_client: TestClient):
 
     v_bad = test_client.post("/session/payment/voucher", json={"code": "INVALIDCODE"})
     assert v_bad.status_code == 400
+
+    # 4. Dynamic Operator Config (sessionPriceIdr & voucherCodes persisted in SQLite)
+    cfg_res = test_client.post(
+        "/session/config",
+        json={"sessionPriceIdr": 15000, "requirePayment": True, "voucherCodes": ["PROMO15K"]},
+    )
+    assert cfg_res.status_code == 200
+    assert cfg_res.json()["sessionPriceIdr"] == 15000
+
+    get_cfg = test_client.get("/session/config")
+    assert get_cfg.status_code == 200
+    assert get_cfg.json()["sessionPriceIdr"] == 15000
+
+    with patch("backend.app.services.payment.doku.DokuPaymentService.is_configured", True), patch(
+        "backend.app.services.payment.doku.DokuPaymentService._call_doku_post",
+        return_value={"qris_data": {"qr_content": "00020101021226580014ID.CO.QRIS.WWW"}},
+    ):
+        dynamic_qris = test_client.post("/session/payment/qris", json={})
+        assert dynamic_qris.status_code == 200
+        assert dynamic_qris.json()["amount"] == 15000
+
+    v_dyn = test_client.post("/session/payment/voucher", json={"code": "promo15k"})
+    assert v_dyn.status_code == 200
+    assert v_dyn.json()["valid"] is True

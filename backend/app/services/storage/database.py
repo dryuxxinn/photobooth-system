@@ -72,6 +72,12 @@ class DatabaseService:
                     completed_at TEXT,
                     FOREIGN KEY (session_id) REFERENCES sessions (id)
                 );
+
+                CREATE TABLE IF NOT EXISTS booth_settings (
+                    key TEXT PRIMARY KEY,
+                    value_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
             # Safely add new columns if upgrading an existing SQLite database
@@ -279,6 +285,41 @@ class DatabaseService:
                     "SELECT * FROM print_jobs ORDER BY created_at DESC LIMIT 50"
                 ).fetchall()
             return [dict(r) for r in rows]
+
+    def get_operator_config(self) -> Dict[str, Any]:
+        import json
+
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT value_json FROM booth_settings WHERE key = 'operator_config' LIMIT 1"
+            ).fetchone()
+            if row and row["value_json"]:
+                try:
+                    data = json.loads(row["value_json"])
+                    if isinstance(data, dict):
+                        return data
+                except Exception:
+                    pass
+        return {}
+
+    def save_operator_config(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
+        import json
+
+        current = self.get_operator_config()
+        merged = {**current, **config_data}
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO booth_settings (key, value_json, updated_at)
+                VALUES ('operator_config', ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value_json = excluded.value_json,
+                    updated_at = excluded.updated_at
+                """,
+                (json.dumps(merged), now_iso),
+            )
+        return merged
 
 
 _db_instance: Optional[DatabaseService] = None

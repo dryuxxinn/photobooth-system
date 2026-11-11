@@ -14,6 +14,7 @@ from backend.app.api.ar import router as ar_router
 from backend.app.services.session import get_session_manager
 from backend.app.services.camera import get_camera_service
 from backend.app.services.printer import get_printer_service
+from backend.app.services.storage.database import get_db_service
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -112,12 +113,14 @@ async def websocket_session_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         session = get_session_manager().get_current_session()
+        operator_cfg = get_db_service().get_operator_config()
         await websocket.send_text(
             json.dumps(
                 {
                     "type": "INITIAL_STATE",
                     "state": get_session_manager().state.value,
                     "session": session,
+                    "operator_config": operator_cfg,
                 },
                 default=str,
             )

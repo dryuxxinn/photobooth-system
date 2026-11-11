@@ -214,7 +214,7 @@ export function PaymentModal({
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(amountIdr || 35000);
+  }).format(qrisTx?.amount || amountIdr || 35000);
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;

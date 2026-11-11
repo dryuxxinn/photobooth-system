@@ -16,6 +16,7 @@ import {
   COUNTDOWN_SECONDS,
   DEFAULT_OPERATOR_CONFIG,
   loadOperatorConfig,
+  saveOperatorConfig,
 } from "@/lib/config";
 import {
   DEFAULT_FRAME_THEMES,
@@ -96,30 +97,59 @@ export function usePhotoboothSession() {
     async () => {}
   );
 
-  // Load operator config from localStorage on mount
+  // Load operator config from localStorage & sync with backend SQLite on mount
   useEffect(() => {
-    const cfg = loadOperatorConfig();
-    setOperatorConfig(cfg);
-    setSelectedCountdownSeconds(cfg.countdownSeconds || COUNTDOWN_SECONDS);
-    if (cfg.defaultFilter) {
-      setSelectedFilter(cfg.defaultFilter);
-    }
-    if (cfg.cameraSourceMode) {
-      webcam.setCameraSource(cfg.cameraSourceMode);
-    }
-    if (typeof cfg.isMirrored === "boolean") {
-      webcam.setIsMirrored(cfg.isMirrored);
-    }
-    if (cfg.preferredDeviceId) {
-      webcam.setSelectedDeviceId(cfg.preferredDeviceId);
-    }
-    const defaultTpl =
-      DEFAULT_TEMPLATES.find((t) => t.id === cfg.defaultTemplateId) ||
-      DEFAULT_TEMPLATES[0];
-    setSelectedTemplate(defaultTpl);
-    setSelectedFrameColor(
-      cfg.defaultFrameColor || defaultTpl.default_frame || "pink"
-    );
+    const applyCfg = (cfg: BoothOperatorConfig) => {
+      setOperatorConfig(cfg);
+      setSelectedCountdownSeconds(cfg.countdownSeconds || COUNTDOWN_SECONDS);
+      if (cfg.defaultFilter) {
+        setSelectedFilter(cfg.defaultFilter);
+      }
+      if (cfg.cameraSourceMode) {
+        webcam.setCameraSource(cfg.cameraSourceMode);
+      }
+      if (typeof cfg.isMirrored === "boolean") {
+        webcam.setIsMirrored(cfg.isMirrored);
+      }
+      if (cfg.preferredDeviceId) {
+        webcam.setSelectedDeviceId(cfg.preferredDeviceId);
+      }
+      const defaultTpl =
+        DEFAULT_TEMPLATES.find((t) => t.id === cfg.defaultTemplateId) ||
+        DEFAULT_TEMPLATES[0];
+      setSelectedTemplate(defaultTpl);
+      setSelectedFrameColor(
+        cfg.defaultFrameColor || defaultTpl.default_frame || "pink"
+      );
+    };
+
+    const localCfg = loadOperatorConfig();
+    applyCfg(localCfg);
+
+    photoboothApi
+      .getOperatorConfig()
+      .then((remoteCfg) => {
+        if (remoteCfg && Object.keys(remoteCfg).length > 0) {
+          const merged: BoothOperatorConfig = {
+            ...localCfg,
+            ...remoteCfg,
+            enabledTemplateIds:
+              Array.isArray(remoteCfg.enabledTemplateIds) &&
+              remoteCfg.enabledTemplateIds.length > 0
+                ? remoteCfg.enabledTemplateIds
+                : localCfg.enabledTemplateIds,
+          };
+          saveOperatorConfig(merged);
+          applyCfg(merged);
+        }
+      })
+      .catch(() => null);
+
+    const onStorageChange = () => {
+      applyCfg(loadOperatorConfig());
+    };
+    window.addEventListener("storage", onStorageChange);
+    return () => window.removeEventListener("storage", onStorageChange);
   }, []);
 
   const handleSelectTemplate = useCallback((tpl: TemplateOption) => {
@@ -394,6 +424,23 @@ export function usePhotoboothSession() {
             if (msg.type === "INITIAL_STATE") {
               setState(msg.state || "IDLE");
               if (msg.session) setSession(msg.session);
+              if (msg.operator_config && Object.keys(msg.operator_config).length > 0) {
+                const merged: BoothOperatorConfig = {
+                  ...loadOperatorConfig(),
+                  ...msg.operator_config,
+                };
+                saveOperatorConfig(merged);
+                setOperatorConfig(merged);
+              }
+            } else if (msg.type === "OPERATOR_CONFIG_UPDATED") {
+              if (msg.data && typeof msg.data === "object") {
+                const merged: BoothOperatorConfig = {
+                  ...loadOperatorConfig(),
+                  ...msg.data,
+                };
+                saveOperatorConfig(merged);
+                setOperatorConfig(merged);
+              }
             } else if (msg.type === "STATE_CHANGE") {
               if (sequenceRunningRef.current || customizingRef.current) return;
               setState(msg.data.to);
@@ -414,11 +461,28 @@ export function usePhotoboothSession() {
     };
   }, []);
 
-  const openPreparationStep = useCallback(() => {
+  const openPreparationStep = useCallback(async () => {
     setErrorBanner(null);
     setCaptureError(null);
     setCompletedSession(null);
-    const cfg = loadOperatorConfig();
+    let cfg = loadOperatorConfig();
+    try {
+      const remoteCfg = await photoboothApi.getOperatorConfig();
+      if (remoteCfg && Object.keys(remoteCfg).length > 0) {
+        cfg = {
+          ...cfg,
+          ...remoteCfg,
+          enabledTemplateIds:
+            Array.isArray(remoteCfg.enabledTemplateIds) &&
+            remoteCfg.enabledTemplateIds.length > 0
+              ? remoteCfg.enabledTemplateIds
+              : cfg.enabledTemplateIds,
+        };
+        saveOperatorConfig(cfg);
+      }
+    } catch {
+      // Fallback to local config if offline
+    }
     setOperatorConfig(cfg);
     if (cfg.requirePayment) {
       setPaymentModalOpen(true);

@@ -2,6 +2,7 @@ import {
   ARPresetOption,
   ARRenderResponse,
   ARStickerAsset,
+  BoothOperatorConfig,
   CameraStatus,
   FrameThemeOption,
   HealthStatus,
@@ -91,6 +92,12 @@ export const photoboothApi = {
   getHealth: () => request<HealthStatus>("/health"),
   getCameraStatus: () => request<CameraStatus>("/camera/status"),
   getPrinterStatus: () => request<PrinterStatus>("/printer/status"),
+  getOperatorConfig: () => request<Partial<BoothOperatorConfig>>("/session/config"),
+  saveOperatorConfig: (config: Partial<BoothOperatorConfig>) =>
+    request<Partial<BoothOperatorConfig>>("/session/config", {
+      method: "POST",
+      body: JSON.stringify(config),
+    }),
   getTemplatesData: () =>
     request<{
       templates: TemplateOption[];

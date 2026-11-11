@@ -68,13 +68,14 @@ export function Dashboard() {
   }, []);
 
   const refreshAll = useCallback(async () => {
-    const [hlth, cam, prn, hist, jobs, tplData] = await Promise.all([
+    const [hlth, cam, prn, hist, jobs, tplData, serverCfg] = await Promise.all([
       photoboothApi.getHealth().catch(() => null),
       photoboothApi.getCameraStatus().catch(() => null),
       photoboothApi.getPrinterStatus().catch(() => null),
       photoboothApi.getSessionHistory(30).catch(() => null),
       photoboothApi.getPrintJobs().catch(() => null),
       photoboothApi.getTemplatesData().catch(() => null),
+      photoboothApi.getOperatorConfig().catch(() => null),
     ]);
 
     if (hlth) setHealth(hlth);
@@ -84,6 +85,11 @@ export function Dashboard() {
     if (jobs?.jobs) setPrintJobs(jobs.jobs);
     if (tplData?.templates?.length) setTemplates(tplData.templates);
     if (tplData?.frame_themes?.length) setFrameThemes(tplData.frame_themes);
+    if (serverCfg && typeof serverCfg === "object") {
+      const merged = { ...loadOperatorConfig(), ...serverCfg };
+      setOperatorConfig(merged);
+      saveOperatorConfig(merged);
+    }
   }, []);
 
   useEffect(() => {
@@ -93,6 +99,16 @@ export function Dashboard() {
   const handleUpdateConfig = (next: BoothOperatorConfig) => {
     setOperatorConfig(next);
     saveOperatorConfig(next);
+    photoboothApi
+      .saveOperatorConfig(next)
+      .then((saved) => {
+        if (saved && typeof saved === "object") {
+          const merged = { ...next, ...saved };
+          setOperatorConfig(merged);
+          saveOperatorConfig(merged);
+        }
+      })
+      .catch(() => null);
   };
 
   const handleForceReset = async () => {

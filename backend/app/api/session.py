@@ -73,6 +73,23 @@ def get_session_history(limit: int = 20):
     return {"sessions": sessions}
 
 
+@router.get("/config")
+def get_operator_config_endpoint():
+    """Retrieve persistent operator configuration (price, vouchers, kiosk flow) from SQLite."""
+    return get_db_service().get_operator_config()
+
+
+@router.post("/config")
+def update_operator_config_endpoint(payload: Dict[str, Any] = Body(default={})):
+    """Save operator configuration to SQLite and broadcast to all connected Kiosk screens via WebSocket."""
+    saved = get_db_service().save_operator_config(payload or {})
+    try:
+        get_session_manager()._emit_event("OPERATOR_CONFIG_UPDATED", saved)
+    except Exception:
+        pass
+    return saved
+
+
 @router.get("/{session_id}", response_model=SessionDetailResponse)
 def get_session_by_id(session_id: str):
     manager = get_session_manager()
@@ -224,10 +241,20 @@ def sync_session_cloud_link(
 @router.post("/payment/qris")
 def create_qris_payment(payload: QrisCreateRequest = QrisCreateRequest()):
     """Create a production dynamic QRIS payment transaction via DOKU API."""
+    db_cfg = get_db_service().get_operator_config()
+    configured_price = int(db_cfg.get("sessionPriceIdr") or 35000)
+    effective_amount = (
+        int(payload.amount)
+        if (payload.amount is not None and int(payload.amount) > 0)
+        else configured_price
+    )
+    if effective_amount < 1:
+        effective_amount = 35000
+
     doku = get_doku_service()
     try:
         tx = doku.generate_qris(
-            amount=payload.amount,
+            amount=effective_amount,
             package_name=payload.package_name or "Sweet Studio Photobooth",
         )
     except RuntimeError as e:
@@ -383,6 +410,12 @@ def verify_voucher_code(payload: VoucherVerifyRequest):
     """Verify a cashier or event voucher code for starting a session."""
     normalized = payload.code.strip().upper()
     allowed = set(DEFAULT_VALID_VOUCHERS)
+    db_cfg = get_db_service().get_operator_config()
+    db_vouchers = db_cfg.get("voucherCodes")
+    if isinstance(db_vouchers, list):
+        for c in db_vouchers:
+            if isinstance(c, str) and c.strip():
+                allowed.add(c.strip().upper())
     if payload.valid_codes:
         for c in payload.valid_codes:
             if c.strip():
