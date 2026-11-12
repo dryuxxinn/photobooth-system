@@ -34,6 +34,10 @@ class StartSessionRequest(BaseModel):
     frame_color: Optional[str] = "cream"
     filter_name: Optional[str] = "original"
     ar_preset_id: Optional[str] = None
+    payment_amount: Optional[int] = Field(default=0, ge=0)
+    payment_method: Optional[str] = "QRIS"
+    payment_status: Optional[str] = "PAID"
+    payment_ref: Optional[str] = None
 
 
 class CapturePhotoRequest(BaseModel):
@@ -95,6 +99,10 @@ class SessionDetailResponse(BaseModel):
     started_at: str
     completed_at: Optional[str] = None
     error_message: Optional[str] = None
+    payment_amount: Optional[int] = 0
+    payment_method: Optional[str] = "QRIS"
+    payment_status: Optional[str] = "PAID"
+    payment_ref: Optional[str] = None
 
 
 class SessionCurrentResponse(BaseModel):

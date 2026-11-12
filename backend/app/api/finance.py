@@ -75,8 +75,17 @@ def calculate_settlement_data(
     total_completed = len(completed_sessions)
     total_sessions_count = len(filtered_sessions)
 
-    # Calculate Gross Revenue
-    gross_revenue = total_completed * session_price
+    # Calculate Gross Revenue from actual recorded session payments or fallback to configured price
+    gross_revenue = 0
+    for s in completed_sessions:
+        paid = s.get("payment_amount")
+        if paid is not None and int(paid) > 0:
+            gross_revenue += int(paid)
+        elif s.get("payment_method") == "VOUCHER":
+            gross_revenue += 0
+        else:
+            gross_revenue += session_price
+
     total_prints = total_completed  # standard 1 strip per completed session
 
     # Resolve deduction rules
@@ -181,7 +190,13 @@ def calculate_settlement_data(
     sessions_detail = []
     for s in filtered_sessions:
         is_done = s.get("status") == "COMPLETED"
-        price = session_price if is_done else 0
+        actual_paid = s.get("payment_amount")
+        if actual_paid is not None and int(actual_paid) > 0:
+            price = int(actual_paid)
+        elif s.get("payment_method") == "VOUCHER":
+            price = 0
+        else:
+            price = session_price if is_done else 0
         sessions_detail.append(
             {
                 "session_id": s.get("session_id"),

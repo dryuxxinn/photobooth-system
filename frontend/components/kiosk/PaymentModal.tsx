@@ -22,7 +22,11 @@ interface PaymentModalProps {
   onClose: () => void;
   amountIdr: number;
   validVoucherCodes?: string[];
-  onPaymentSuccess: () => void;
+  onPaymentSuccess: (paymentInfo?: {
+    amount: number;
+    method: "QRIS" | "VOUCHER";
+    ref?: string;
+  }) => void;
 }
 
 interface QrisRecord {
@@ -129,8 +133,13 @@ export function PaymentModal({
           if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
           setQrisTx((prev) => (prev ? { ...prev, status: "PAID" } : prev));
           playSuccessChime(true);
+          const paidAmount = qrisTx.amount || amountIdr || 35000;
           setTimeout(() => {
-            onPaymentSuccess();
+            onPaymentSuccess({
+              amount: paidAmount,
+              method: "QRIS",
+              ref: qrisTx.transaction_id || qrisTx.invoice_number,
+            });
           }, 850);
         } else if (check.status === "FAILED") {
           if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
@@ -165,8 +174,16 @@ export function PaymentModal({
         if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
         setQrisTx((prev) => (prev ? { ...prev, status: "PAID" } : prev));
         playSuccessChime(true);
+        const paidAmount = updated.amount || qrisTx.amount || amountIdr || 35000;
         setTimeout(() => {
-          onPaymentSuccess();
+          onPaymentSuccess({
+            amount: paidAmount,
+            method: "QRIS",
+            ref:
+              updated.transaction_id ||
+              qrisTx.transaction_id ||
+              qrisTx.invoice_number,
+          });
         }, 700);
       } else if (updated.status === "FAILED") {
         setQrisTx((prev) => (prev ? { ...prev, status: "FAILED" } : prev));
@@ -199,7 +216,11 @@ export function PaymentModal({
         validVoucherCodes
       );
       playSuccessChime(true);
-      onPaymentSuccess();
+      onPaymentSuccess({
+        amount: 0,
+        method: "VOUCHER",
+        ref: voucherCode.trim(),
+      });
     } catch (err: any) {
       setVoucherError(
         err?.message ||

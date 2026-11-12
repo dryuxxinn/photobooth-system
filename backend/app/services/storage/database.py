@@ -44,7 +44,11 @@ class DatabaseService:
                     cloud_share_url TEXT,
                     started_at TEXT NOT NULL,
                     completed_at TEXT,
-                    error_message TEXT
+                    error_message TEXT,
+                    payment_amount INTEGER DEFAULT 0,
+                    payment_method TEXT DEFAULT 'QRIS',
+                    payment_status TEXT DEFAULT 'PAID',
+                    payment_ref TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS photos (
@@ -118,6 +122,10 @@ class DatabaseService:
                 ("ar_preset_id", "TEXT"),
                 ("gif_path", "TEXT"),
                 ("cloud_share_url", "TEXT"),
+                ("payment_amount", "INTEGER DEFAULT 0"),
+                ("payment_method", "TEXT DEFAULT 'QRIS'"),
+                ("payment_status", "TEXT DEFAULT 'PAID'"),
+                ("payment_ref", "TEXT"),
             ]:
                 if col_name not in existing_cols:
                     try:
@@ -135,8 +143,9 @@ class DatabaseService:
                     id, customer_name, status, photos_required,
                     template_id, frame_color, filter_name, sticker_id, ar_preset_id,
                     processed_path, gif_path, cloud_share_url,
-                    started_at, completed_at, error_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    started_at, completed_at, error_message,
+                    payment_amount, payment_method, payment_status, payment_ref
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     customer_name = excluded.customer_name,
                     status = excluded.status,
@@ -149,7 +158,11 @@ class DatabaseService:
                     gif_path = excluded.gif_path,
                     cloud_share_url = excluded.cloud_share_url,
                     completed_at = excluded.completed_at,
-                    error_message = excluded.error_message
+                    error_message = excluded.error_message,
+                    payment_amount = COALESCE(excluded.payment_amount, sessions.payment_amount),
+                    payment_method = COALESCE(excluded.payment_method, sessions.payment_method),
+                    payment_status = COALESCE(excluded.payment_status, sessions.payment_status),
+                    payment_ref = COALESCE(excluded.payment_ref, sessions.payment_ref)
                 """,
                 (
                     session["session_id"],
@@ -167,6 +180,10 @@ class DatabaseService:
                     session["started_at"],
                     session.get("completed_at"),
                     session.get("error_message"),
+                    int(session.get("payment_amount", 0) or 0),
+                    session.get("payment_method", "QRIS"),
+                    session.get("payment_status", "PAID"),
+                    session.get("payment_ref"),
                 ),
             )
 
@@ -276,6 +293,10 @@ class DatabaseService:
                 "started_at": row["started_at"],
                 "completed_at": row["completed_at"],
                 "error_message": row["error_message"],
+                "payment_amount": row["payment_amount"] if "payment_amount" in row_keys and row["payment_amount"] is not None else 0,
+                "payment_method": row["payment_method"] if "payment_method" in row_keys and row["payment_method"] else "QRIS",
+                "payment_status": row["payment_status"] if "payment_status" in row_keys and row["payment_status"] else "PAID",
+                "payment_ref": row["payment_ref"] if "payment_ref" in row_keys else None,
                 "photos": [
                     {
                         "id": f"photo_{p['photo_index']}",

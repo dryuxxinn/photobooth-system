@@ -11,6 +11,8 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   CheckIcon,
+  DownloadIcon,
+  EyeIcon,
   PrinterIcon,
   QrIcon,
   RefreshIcon,
@@ -32,6 +34,13 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
     msg: string;
     tone: "success" | "error";
   } | null>(null);
+
+  // Gallery Modal state
+  const [selectedGallerySession, setSelectedGallerySession] =
+    useState<SessionDetail | null>(null);
+  const [galleryTab, setGalleryTab] = useState<"strip" | "poses" | "gif">(
+    "strip"
+  );
 
   // QR & Share Modal state
   const [activeShareSession, setActiveShareSession] =
@@ -194,6 +203,9 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                   Pelanggan
                 </th>
                 <th scope="col" className="py-2.5 px-3 font-heading font-bold">
+                  Pembayaran
+                </th>
+                <th scope="col" className="py-2.5 px-3 font-heading font-bold">
                   Template & Frame
                 </th>
                 <th scope="col" className="py-2.5 px-3 font-heading font-bold">
@@ -214,7 +226,6 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
               {filteredSessions.map((s) => {
                 const isDone = s.status === "COMPLETED";
                 const isErr = s.status === "ERROR" || s.status === "ABORTED";
-                const imgUrl = resolveStorageUrl(s.processed_image_url);
                 const isReprinting = reprintingId === s.session_id;
                 const notice =
                   actionNotice?.id === s.session_id ? actionNotice : null;
@@ -240,6 +251,16 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                     <td className="py-2.5 px-3 text-sweet-text font-medium">
                       {s.customer_name || "-"}
                     </td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-heading font-bold text-sweet-text block">
+                        {s.payment_amount != null
+                          ? `Rp ${Number(s.payment_amount).toLocaleString("id-ID")}`
+                          : "Rp 35.000"}
+                      </span>
+                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-sweet-bg border border-sweet-border text-sweet-muted">
+                        {s.payment_method || "QRIS"}
+                      </span>
+                    </td>
                     <td className="py-2.5 px-3 text-sweet-muted">
                       <span className="font-semibold text-sweet-text">
                         {s.template_id || "classic_strip_3"}
@@ -248,8 +269,45 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                         Frame: {s.frame_color || "cream"}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-sweet-text">
-                      {s.photos_taken}/{s.photos_required}
+                    <td className="py-2.5 px-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedGallerySession(s);
+                          setGalleryTab("strip");
+                        }}
+                        className="group flex items-center gap-2 p-1 rounded-xl hover:bg-sweet-primary/20 transition-all text-left min-h-[44px]"
+                        title="Buka galeri foto sesi ini"
+                      >
+                        {s.processed_image_url || (s.photos && s.photos.length > 0) ? (
+                          <div className="relative size-10 rounded-lg overflow-hidden border border-sweet-border bg-sweet-bg shrink-0 shadow-2xs group-hover:border-sweet-primary">
+                            <img
+                              src={
+                                resolveStorageUrl(s.processed_image_url) ||
+                                resolveStorageUrl(
+                                  s.photos?.[0]?.thumbnail_url ||
+                                    s.photos?.[0]?.original_url
+                                )
+                              }
+                              alt="Thumbnail sesi"
+                              className="size-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : (
+                          <div className="size-10 rounded-lg border border-dashed border-sweet-border bg-sweet-bg/60 flex items-center justify-center text-[10px] text-sweet-muted shrink-0">
+                            -
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-bold text-sweet-text block">
+                            {s.photos_taken}/{s.photos_required}
+                          </span>
+                          <span className="text-[10px] text-sweet-primaryStrong font-semibold group-hover:underline">
+                            Lihat Foto
+                          </span>
+                        </div>
+                      </button>
                     </td>
                     <td className="py-2.5 px-3">
                       <StatusBadge
@@ -263,27 +321,26 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5 flex-wrap">
-                        {/* Tombol Lihat Hasil */}
-                        {imgUrl ? (
-                          <a
-                            href={imgUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="min-h-[36px] px-2.5 py-1 rounded-lg bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[11px] font-heading font-bold inline-flex items-center gap-1 transition-colors"
-                            title="Buka gambar strip di tab baru"
-                          >
-                            <span>Lihat</span>
-                          </a>
-                        ) : (
-                          <span className="text-[11px] text-sweet-muted px-2">-</span>
-                        )}
+                        {/* Tombol Buka Galeri */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedGallerySession(s);
+                            setGalleryTab("strip");
+                          }}
+                          className="min-h-[44px] px-3 py-1.5 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[11px] font-heading font-bold inline-flex items-center gap-1.5 transition-colors"
+                          title="Buka galeri foto dan detail sesi"
+                        >
+                          <EyeIcon className="size-3.5 text-sweet-primaryStrong" />
+                          <span>Galeri</span>
+                        </button>
 
                         {/* Tombol Bagi / QR Code Modal */}
                         {isDone && (
                           <button
                             type="button"
                             onClick={() => setActiveShareSession(s)}
-                            className="min-h-[36px] px-2.5 py-1 rounded-lg bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[11px] font-heading font-bold inline-flex items-center gap-1 transition-colors"
+                            className="min-h-[44px] px-3 py-1.5 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[11px] font-heading font-bold inline-flex items-center gap-1.5 transition-colors"
                             title="Tampilkan QR Galeri Digital untuk pelanggan"
                           >
                             <QrIcon className="size-3.5 text-sweet-primaryStrong" />
@@ -297,7 +354,7 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                             type="button"
                             disabled={isReprinting}
                             onClick={() => handleReprint(s)}
-                            className="min-h-[36px] px-2.5 py-1 rounded-lg bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text text-[11px] font-heading font-bold inline-flex items-center gap-1 border border-sweet-primaryStrong/40 transition-colors disabled:opacity-50"
+                            className="min-h-[44px] px-3 py-1.5 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text text-[11px] font-heading font-bold inline-flex items-center gap-1.5 border border-sweet-primaryStrong/40 transition-colors disabled:opacity-50"
                             title="Kirim ulang strip foto ke printer"
                           >
                             {isReprinting ? (
@@ -316,6 +373,274 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal Galeri Foto & Detail Lengkap Sesi */}
+      {selectedGallerySession && (
+        <Modal
+          isOpen={Boolean(selectedGallerySession)}
+          onClose={() => setSelectedGallerySession(null)}
+          title="Galeri Foto & Detail Sesi"
+          subtitle={`Sesi: ${selectedGallerySession.session_id}`}
+          maxWidthClass="max-w-3xl"
+        >
+          <div className="space-y-4">
+            {/* Metadata Ringkasan Sesi */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-sweet-bg border border-sweet-border text-xs">
+              <div>
+                <span className="text-[10px] text-sweet-muted block">Pelanggan</span>
+                <span className="font-heading font-bold text-sweet-text truncate block">
+                  {selectedGallerySession.customer_name || "Tamu Booth"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-sweet-muted block">Pembayaran</span>
+                <span className="font-heading font-bold text-sweet-text block">
+                  {selectedGallerySession.payment_amount != null
+                    ? `Rp ${Number(selectedGallerySession.payment_amount).toLocaleString("id-ID")}`
+                    : "Rp 35.000"}
+                  <span className="ml-1 text-[10px] text-sweet-muted font-mono uppercase">
+                    ({selectedGallerySession.payment_method || "QRIS"})
+                  </span>
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-sweet-muted block">Template / Filter</span>
+                <span className="font-heading font-bold text-sweet-text truncate block">
+                  {selectedGallerySession.template_id || "classic_strip_3"} / {selectedGallerySession.filter_name || "original"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-sweet-muted block">Waktu Sesi</span>
+                <span className="font-heading font-bold text-sweet-text block font-mono">
+                  {new Date(selectedGallerySession.started_at).toLocaleTimeString("id-ID")}
+                </span>
+              </div>
+            </div>
+
+            {/* Tab Navigasi Galeri */}
+            <div
+              role="group"
+              aria-label="Tampilan galeri foto"
+              className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-sweet-bg border border-sweet-border"
+            >
+              <button
+                type="button"
+                aria-pressed={galleryTab === "strip"}
+                onClick={() => setGalleryTab("strip")}
+                className={`min-h-[44px] rounded-xl font-heading font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  galleryTab === "strip"
+                    ? "bg-sweet-primary text-sweet-text shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                <span>Strip Foto Cetak</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={galleryTab === "poses"}
+                onClick={() => setGalleryTab("poses")}
+                className={`min-h-[44px] rounded-xl font-heading font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  galleryTab === "poses"
+                    ? "bg-sweet-primary text-sweet-text shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                <span>Pose Bilik ({selectedGallerySession.photos?.length || selectedGallerySession.photos_taken})</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={galleryTab === "gif"}
+                onClick={() => setGalleryTab("gif")}
+                className={`min-h-[44px] rounded-xl font-heading font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  galleryTab === "gif"
+                    ? "bg-sweet-primary text-sweet-text shadow-xs"
+                    : "text-sweet-muted hover:text-sweet-text"
+                }`}
+              >
+                <span>Animasi Boomerang</span>
+              </button>
+            </div>
+
+            {/* Tab Content: Strip Foto Cetak */}
+            {galleryTab === "strip" && (
+              <div className="space-y-3">
+                {selectedGallerySession.processed_image_url ? (
+                  <div className="flex flex-col items-center">
+                    <div className="max-h-[450px] overflow-auto p-2 bg-sweet-bg/80 rounded-2xl border border-sweet-border flex items-center justify-center">
+                      <img
+                        src={resolveStorageUrl(selectedGallerySession.processed_image_url)}
+                        alt="Strip Foto Siap Cetak"
+                        className="max-h-[420px] w-auto rounded-xl shadow-md object-contain"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+                      <a
+                        href={resolveStorageUrl(selectedGallerySession.processed_image_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong font-heading font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <EyeIcon className="size-4 text-sweet-primaryStrong" />
+                        <span>Buka Resolusi Penuh</span>
+                      </a>
+                      <a
+                        href={resolveStorageUrl(selectedGallerySession.processed_image_url)}
+                        download={`photobooth_${selectedGallerySession.session_id}_strip.jpg`}
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <DownloadIcon className="size-4" />
+                        <span>Unduh File Cetak</span>
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 px-4 rounded-2xl bg-sweet-bg border border-sweet-border text-center space-y-1">
+                    <p className="font-heading font-bold text-sm text-sweet-text">
+                      Strip foto belum selesai diproses
+                    </p>
+                    <p className="text-xs text-sweet-muted">
+                      Sesi ini belum mencapai tahap akhir atau kompilasi strip belum dijalankan.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab Content: Pose Bilik (Individual Raw Photos) */}
+            {galleryTab === "poses" && (
+              <div className="space-y-3">
+                {selectedGallerySession.photos && selectedGallerySession.photos.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[450px] overflow-y-auto p-1">
+                    {selectedGallerySession.photos.map((photo, idx) => {
+                      const photoUrl = resolveStorageUrl(photo.preview_url || photo.original_url);
+                      return (
+                        <div
+                          key={photo.photo_id || idx}
+                          className="p-2 rounded-2xl bg-sweet-bg border border-sweet-border flex flex-col items-center gap-2 group hover:border-sweet-primary transition-all"
+                        >
+                          <div className="w-full aspect-3/2 rounded-xl overflow-hidden bg-black/5 flex items-center justify-center">
+                            <img
+                              src={photoUrl}
+                              alt={`Pose ${idx + 1}`}
+                              className="size-full object-cover group-hover:scale-105 transition-transform"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="w-full flex items-center justify-between px-1">
+                            <span className="text-[11px] font-heading font-bold text-sweet-text">
+                              Pose {idx + 1}
+                            </span>
+                            <a
+                              href={photoUrl}
+                              download={`pose_${idx + 1}_${selectedGallerySession.session_id}.jpg`}
+                              className="min-h-[36px] px-2.5 py-1 rounded-lg bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[10px] font-heading font-bold inline-flex items-center gap-1 transition-colors"
+                              title="Unduh foto pose ini"
+                            >
+                              <DownloadIcon className="size-3" />
+                              <span>Unduh</span>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 px-4 rounded-2xl bg-sweet-bg border border-sweet-border text-center space-y-1">
+                    <p className="font-heading font-bold text-sm text-sweet-text">
+                      Belum ada pose foto individu yang tersimpan
+                    </p>
+                    <p className="text-xs text-sweet-muted">
+                      File foto kamera asli untuk sesi ini tidak ditemukan di direktori penyimpanan.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab Content: Animasi Boomerang */}
+            {galleryTab === "gif" && (
+              <div className="space-y-3">
+                {selectedGallerySession.gif_url ? (
+                  <div className="flex flex-col items-center">
+                    <div className="max-h-[450px] p-2 bg-sweet-bg/80 rounded-2xl border border-sweet-border flex items-center justify-center">
+                      <img
+                        src={resolveStorageUrl(selectedGallerySession.gif_url)}
+                        alt="Animasi Boomerang Sesi"
+                        className="max-h-[380px] w-auto rounded-xl shadow-md object-contain"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <a
+                        href={resolveStorageUrl(selectedGallerySession.gif_url)}
+                        download={`photobooth_${selectedGallerySession.session_id}_boomerang.gif`}
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <DownloadIcon className="size-4" />
+                        <span>Unduh Animasi GIF</span>
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 px-4 rounded-2xl bg-sweet-bg border border-sweet-border text-center space-y-1">
+                    <p className="font-heading font-bold text-sm text-sweet-text">
+                      Animasi Boomerang tidak tersedia
+                    </p>
+                    <p className="text-xs text-sweet-muted">
+                      GIF bergerak dibuat otomatis saat sesi selesai. Sesi ini belum menghasilkan animasi GIF.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-sweet-border">
+              <div className="flex items-center gap-2">
+                {selectedGallerySession.status === "COMPLETED" && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={reprintingId === selectedGallerySession.session_id}
+                      onClick={() => handleReprint(selectedGallerySession)}
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                      {reprintingId === selectedGallerySession.session_id ? (
+                        <SpinnerIcon className="size-4 animate-spin" />
+                      ) : (
+                        <PrinterIcon className="size-4" />
+                      )}
+                      <span>
+                        {reprintingId === selectedGallerySession.session_id
+                          ? "Mencetak..."
+                          : "Cetak Ulang (Reprint)"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedGallerySession;
+                        setSelectedGallerySession(null);
+                        setActiveShareSession(target);
+                      }}
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong font-heading font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <QrIcon className="size-4 text-sweet-primaryStrong" />
+                      <span>Buka QR Pelanggan</span>
+                    </button>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedGallerySession(null)}
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-sweet-bg hover:bg-sweet-surface text-sweet-text font-heading font-bold text-xs border border-sweet-border transition-colors"
+              >
+                Tutup Galeri
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Modal Bagi QR & Link Download untuk Pelanggan */}

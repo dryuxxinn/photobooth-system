@@ -52,6 +52,10 @@ export interface SessionDetail {
   started_at: string;
   completed_at?: string | null;
   error_message?: string | null;
+  payment_amount?: number;
+  payment_method?: "QRIS" | "VOUCHER" | "FREE" | string;
+  payment_status?: "PAID" | "UNPAID" | string;
+  payment_ref?: string | null;
 }
 
 export interface CameraStatus {

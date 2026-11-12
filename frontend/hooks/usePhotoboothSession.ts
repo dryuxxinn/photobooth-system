@@ -69,6 +69,11 @@ export function usePhotoboothSession() {
   const [printCopies, setPrintCopies] = useState<number>(1);
   const [imageVersion, setImageVersion] = useState<number>(1);
   const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [pendingPayment, setPendingPayment] = useState<{
+    amount: number;
+    method: string;
+    ref?: string | null;
+  } | null>(null);
 
   // Centralized ARIA live region messages
   const [politeMessage, setPoliteMessage] = useState<string>("");
@@ -485,22 +490,34 @@ export function usePhotoboothSession() {
     }
     setOperatorConfig(cfg);
     if (cfg.requirePayment) {
+      setPendingPayment(null);
       setPaymentModalOpen(true);
       return;
     }
     setKioskStep("PREPARATION");
   }, []);
 
-  const confirmPaymentAndProceed = useCallback(() => {
-    setPaymentModalOpen(false);
-    playSuccessChime(operatorConfig.enableSoundEffects ?? true);
-    setKioskStep("PREPARATION");
-  }, [operatorConfig.enableSoundEffects]);
+  const confirmPaymentAndProceed = useCallback(
+    (paymentInfo?: { amount: number; method: string; ref?: string }) => {
+      setPaymentModalOpen(false);
+      if (paymentInfo) {
+        setPendingPayment({
+          amount: paymentInfo.amount,
+          method: paymentInfo.method,
+          ref: paymentInfo.ref || null,
+        });
+      }
+      playSuccessChime(operatorConfig.enableSoundEffects ?? true);
+      setKioskStep("PREPARATION");
+    },
+    [operatorConfig.enableSoundEffects]
+  );
 
   const backToWelcome = useCallback(() => {
     setErrorBanner(null);
     setCaptureError(null);
     setCompletedSession(null);
+    setPendingPayment(null);
     setKioskStep("WELCOME");
   }, []);
 
@@ -510,12 +527,17 @@ export function usePhotoboothSession() {
       setCaptureError(null);
       setIsBusy(true);
       try {
+        const defaultPrice = operatorConfig.sessionPriceIdr ?? 35000;
         const started = await photoboothApi.startSession({
           customer_name: customerName || undefined,
           photos_required: 6, // Always capture 6 poses per session
           template_id: selectedTemplate.id,
           frame_color: selectedFrameColor,
           filter_name: selectedFilter,
+          payment_amount: pendingPayment ? pendingPayment.amount : defaultPrice,
+          payment_method: pendingPayment ? pendingPayment.method : "QRIS",
+          payment_status: "PAID",
+          payment_ref: pendingPayment?.ref || undefined,
         });
         setSession(started);
         setState(started.status);
@@ -528,7 +550,14 @@ export function usePhotoboothSession() {
         setIsBusy(false);
       }
     },
-    [selectedTemplate, selectedFrameColor, selectedFilter, runAutomatedCaptureSequence]
+    [
+      selectedTemplate,
+      selectedFrameColor,
+      selectedFilter,
+      operatorConfig.sessionPriceIdr,
+      pendingPayment,
+      runAutomatedCaptureSequence,
+    ]
   );
 
   const retryFailedCapture = useCallback(async () => {
@@ -690,6 +719,7 @@ export function usePhotoboothSession() {
   const resetToWelcomeFromCompletion = useCallback(async () => {
     setCompletedSession(null);
     setSession(null);
+    setPendingPayment(null);
     setState("IDLE");
     setKioskStep("WELCOME");
     await refreshSystemStatus();
@@ -704,6 +734,7 @@ export function usePhotoboothSession() {
     setReviewCountdown(null);
     setCountdown(null);
     setCaptureError(null);
+    setPendingPayment(null);
     if (!session) {
       setState("IDLE");
       setKioskStep("WELCOME");
@@ -732,6 +763,7 @@ export function usePhotoboothSession() {
     setReviewCountdown(null);
     setCountdown(null);
     setCaptureError(null);
+    setPendingPayment(null);
     await photoboothApi.resetSystem().catch(() => null);
     setSession(null);
     setCompletedSession(null);

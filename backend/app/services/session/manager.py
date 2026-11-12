@@ -136,6 +136,10 @@ class SessionManager:
         frame_color: Optional[str] = None,
         filter_name: Optional[str] = "original",
         ar_preset_id: Optional[str] = None,
+        payment_amount: int = 0,
+        payment_method: str = "QRIS",
+        payment_status: str = "PAID",
+        payment_ref: Optional[str] = None,
     ) -> Dict[str, Any]:
         if self.state != SessionState.IDLE:
             raise SessionTransitionError(
@@ -175,6 +179,10 @@ class SessionManager:
             "started_at": now,
             "completed_at": None,
             "error_message": None,
+            "payment_amount": int(payment_amount or 0),
+            "payment_method": payment_method or "QRIS",
+            "payment_status": payment_status or "PAID",
+            "payment_ref": payment_ref,
         }
 
         self._transition_to(SessionState.STARTED)

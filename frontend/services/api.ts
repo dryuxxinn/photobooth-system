@@ -180,6 +180,10 @@ export const photoboothApi = {
     frame_color?: string;
     filter_name?: string;
     ar_preset_id?: string;
+    payment_amount?: number;
+    payment_method?: string;
+    payment_status?: string;
+    payment_ref?: string | null;
   }) =>
     request<SessionDetail>("/session/start", {
       method: "POST",

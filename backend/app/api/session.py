@@ -39,6 +39,14 @@ def start_session(payload: StartSessionRequest = StartSessionRequest()):
     photos_required = payload.photos_required or settings.DEFAULT_PHOTOS_PER_SESSION
     template_id = payload.template_id or "classic_strip_3"
 
+    db_cfg = get_db_service().get_operator_config()
+    default_price = int(db_cfg.get("sessionPriceIdr") or 35000)
+    effective_payment_amount = (
+        payload.payment_amount
+        if payload.payment_amount is not None
+        else (0 if payload.payment_method == "VOUCHER" else default_price)
+    )
+
     try:
         session = manager.start_session(
             customer_name=payload.customer_name,
@@ -47,6 +55,10 @@ def start_session(payload: StartSessionRequest = StartSessionRequest()):
             frame_color=payload.frame_color,
             filter_name=payload.filter_name,
             ar_preset_id=payload.ar_preset_id,
+            payment_amount=effective_payment_amount,
+            payment_method=payload.payment_method or "QRIS",
+            payment_status=payload.payment_status or "PAID",
+            payment_ref=payload.payment_ref,
         )
         return SessionDetailResponse(**session)
     except SessionTransitionError as e:
