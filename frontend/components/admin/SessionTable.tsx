@@ -516,7 +516,7 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                       const photoUrl = resolveStorageUrl(photo.preview_url || photo.original_url);
                       return (
                         <div
-                          key={photo.photo_id || idx}
+                          key={photo.id || idx}
                           className="p-2 rounded-2xl bg-sweet-bg border border-sweet-border flex flex-col items-center gap-2 group hover:border-sweet-primary transition-all"
                         >
                           <div className="w-full aspect-3/2 rounded-xl overflow-hidden bg-black/5 flex items-center justify-center">

@@ -21,6 +21,7 @@ export type KioskSubStep =
 
 export interface PhotoItem {
   id: string;
+  photo_id?: string | null;
   filename: string;
   original_path: string;
   thumbnail_path?: string | null;
