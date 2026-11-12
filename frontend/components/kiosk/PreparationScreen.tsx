@@ -61,6 +61,7 @@ interface PreparationScreenProps {
   isBusy: boolean;
   onBack: () => void;
   onStartCapture: (customerName?: string) => void;
+  extraPosesBuffer?: number;
 }
 
 export function PreparationScreen({
@@ -93,11 +94,18 @@ export function PreparationScreen({
   isBusy,
   onBack,
   onStartCapture,
+  extraPosesBuffer = 1,
 }: PreparationScreenProps) {
   const [customerName, setCustomerName] = useState("");
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState(false);
   const [readinessModalOpen, setReadinessModalOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+
+  const extraBuffer = extraPosesBuffer ?? 1;
+  const capturePoseCount = Math.max(
+    selectedTemplate.photos_required,
+    selectedTemplate.photos_required + extraBuffer
+  );
 
   const isUsingWebcam = cameraSource === "webcam";
   const cameraReady = isUsingWebcam ? streamReady : (cameraStatus?.connected ?? true);
@@ -160,7 +168,7 @@ export function PreparationScreen({
             <HeartIcon className="size-5 text-sweet-primaryStrong" />
           </h1>
           <p className="text-[11px] sm:text-xs text-sweet-muted font-heading font-semibold">
-            Stand here and look at the camera • Sesi 6 Pose • Pilih {selectedTemplate.photos_required} Foto Terbaik untuk Frame
+            Stand here and look at the camera • Sesi {capturePoseCount} Pose • Pilih {selectedTemplate.photos_required} Foto Terbaik untuk Frame
           </p>
         </div>
 
@@ -173,7 +181,7 @@ export function PreparationScreen({
         <div className="lg:col-span-7 flex flex-col items-center gap-2.5 animate-container-left">
           <CameraPreview
             cameraStatus={cameraStatus}
-            photosRequired={selectedTemplate.photos_required}
+            photosRequired={capturePoseCount}
             photosTaken={0}
             mode="preparation"
             cameraSource={cameraSource}
@@ -421,7 +429,7 @@ export function PreparationScreen({
                   key={`${selectedTemplate.id}-${selectedFrameColor}`}
                   className="px-2.5 py-0.5 rounded-full bg-[#FBCFE8] text-[11px] font-heading font-extrabold text-[#3F3D56] shadow-xs animate-spring-swap"
                 >
-                  {selectedTemplate.photos_required} Slot Cetak • {selectedTemplate.aspect_label || "2x6 Strip"}
+                  {selectedTemplate.photos_required} Slot Cetak • Ambil {capturePoseCount} Pose • {selectedTemplate.aspect_label || "2x6 Strip"}
                 </span>
               </div>
 
@@ -609,7 +617,7 @@ export function PreparationScreen({
               MULAI FOTO SEKARANG
             </Button>
             <p className="text-[11px] font-heading font-semibold text-sweet-muted text-center">
-              Ambil 6 pose seru • Pilih {selectedTemplate.photos_required} foto terbaik untuk frame
+              Ambil {capturePoseCount} pose seru • Pilih {selectedTemplate.photos_required} foto terbaik untuk frame
             </p>
           </div>
         </div>

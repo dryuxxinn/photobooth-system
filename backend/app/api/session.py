@@ -36,11 +36,19 @@ DEFAULT_VALID_VOUCHERS = {"SWEET2026", "VIPFREE", "BESTIE", "DRYU100", "PROMO50"
 )
 def start_session(payload: StartSessionRequest = StartSessionRequest()):
     manager = get_session_manager()
-    photos_required = payload.photos_required or settings.DEFAULT_PHOTOS_PER_SESSION
     template_id = payload.template_id or "classic_strip_3"
 
     db_cfg = get_db_service().get_operator_config()
     default_price = int(db_cfg.get("sessionPriceIdr") or 35000)
+    extra_buffer = int(db_cfg.get("extraPosesBuffer", 1))
+
+    if payload.photos_required is not None:
+        photos_required = payload.photos_required
+    else:
+        from backend.app.services.image.processor import ImageProcessor
+        tpl_meta = ImageProcessor.get_template(template_id)
+        tpl_slots = tpl_meta.get("photos_required", 3) if tpl_meta else 3
+        photos_required = max(tpl_slots, tpl_slots + extra_buffer)
     effective_payment_amount = (
         payload.payment_amount
         if payload.payment_amount is not None

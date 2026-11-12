@@ -219,6 +219,7 @@ export default function KioskHomePage() {
             isBusy={isBusy}
             onBack={backToWelcome}
             onStartCapture={startBoothSession}
+            extraPosesBuffer={operatorConfig.extraPosesBuffer ?? 1}
           />
         )}
 

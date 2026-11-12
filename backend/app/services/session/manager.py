@@ -131,7 +131,7 @@ class SessionManager:
     def start_session(
         self,
         customer_name: Optional[str] = None,
-        photos_required: int = 6,
+        photos_required: Optional[int] = None,
         template_id: str = "classic_strip_3",
         frame_color: Optional[str] = None,
         filter_name: Optional[str] = "original",
@@ -148,12 +148,21 @@ class SessionManager:
             )
 
         # Find default frame color for template if not specified
+        tpl_meta = next(
+            (t for t in ImageProcessor.AVAILABLE_TEMPLATES if t["id"] == template_id),
+            None,
+        )
         if not frame_color:
-            tpl_meta = next(
-                (t for t in ImageProcessor.AVAILABLE_TEMPLATES if t["id"] == template_id),
-                None,
-            )
             frame_color = tpl_meta.get("default_frame", "cream") if tpl_meta else "cream"
+
+        if photos_required is None:
+            tpl_slots = tpl_meta.get("photos_required", 3) if tpl_meta else 3
+            try:
+                db_cfg = get_db_service().get_operator_config()
+                extra_buffer = int(db_cfg.get("extraPosesBuffer", 1))
+            except Exception:
+                extra_buffer = 1
+            photos_required = max(tpl_slots, tpl_slots + extra_buffer)
 
         session_id = generate_session_id()
         now = datetime.now(timezone.utc).isoformat()

@@ -66,6 +66,17 @@ export function PhotoSelection({
   };
 
   const isComplete = selectedIds.length === maxPhotos;
+  const photoCount = session.photos.length;
+  const gridLayoutClass =
+    photoCount <= 2
+      ? "grid-cols-2 max-w-2xl"
+      : photoCount === 3
+      ? "grid-cols-1 sm:grid-cols-3 max-w-4xl"
+      : photoCount === 4
+      ? "grid-cols-2 sm:grid-cols-4 max-w-5xl"
+      : photoCount === 5
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-5 max-w-6xl"
+      : "grid-cols-2 md:grid-cols-3 md:grid-rows-2 max-w-5xl";
 
   return (
     <section
@@ -87,7 +98,7 @@ export function PhotoSelection({
             <HeartIcon className="size-5 text-sweet-primaryStrong" />
           </h1>
           <p className="text-xs text-sweet-muted mx-auto">
-            Sentuh foto untuk memilih posisi urutan slot ({selectedIds.length} dari {maxPhotos} terpilih)
+            Sentuh foto untuk memilih posisi urutan slot ({selectedIds.length} dari {maxPhotos} terpilih dari total {photoCount} pose)
           </p>
         </div>
 
@@ -96,11 +107,11 @@ export function PhotoSelection({
         </StatusBadge>
       </div>
 
-      {/* 6 Photos in 3x2 Grid with Staggered Domino Entrance */}
+      {/* Dynamic Grid Layout based on Total Captured Poses */}
       <div
         role="group"
         aria-label="Pilih foto terbaik untuk frame"
-        className="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 gap-3 max-w-5xl w-full mx-auto my-2"
+        className={`flex-1 min-h-0 grid gap-3 w-full mx-auto my-2 ${gridLayoutClass}`}
       >
         {session.photos.map((photo, idx) => {
           const slotIndex = selectedIds.indexOf(photo.id);

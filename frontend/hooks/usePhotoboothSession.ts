@@ -528,9 +528,13 @@ export function usePhotoboothSession() {
       setIsBusy(true);
       try {
         const defaultPrice = operatorConfig.sessionPriceIdr ?? 35000;
+        const extraBuffer = operatorConfig.extraPosesBuffer ?? 1;
+        const templateSlots = selectedTemplate.photos_required || 3;
+        const captureQuota = Math.max(templateSlots, templateSlots + extraBuffer);
+
         const started = await photoboothApi.startSession({
           customer_name: customerName || undefined,
-          photos_required: 6, // Always capture 6 poses per session
+          photos_required: captureQuota,
           template_id: selectedTemplate.id,
           frame_color: selectedFrameColor,
           filter_name: selectedFilter,
@@ -555,6 +559,7 @@ export function usePhotoboothSession() {
       selectedFrameColor,
       selectedFilter,
       operatorConfig.sessionPriceIdr,
+      operatorConfig.extraPosesBuffer,
       pendingPayment,
       runAutomatedCaptureSequence,
     ]

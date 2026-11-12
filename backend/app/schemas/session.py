@@ -29,7 +29,7 @@ class PhotoItem(BaseModel):
 
 class StartSessionRequest(BaseModel):
     customer_name: Optional[str] = None
-    photos_required: Optional[int] = Field(default=6, ge=1, le=10)
+    photos_required: Optional[int] = Field(default=None, ge=1, le=12)
     template_id: Optional[str] = "classic_strip_3"
     frame_color: Optional[str] = "cream"
     filter_name: Optional[str] = "original"

@@ -40,6 +40,7 @@ export const DEFAULT_OPERATOR_CONFIG: BoothOperatorConfig = {
   isMirrored: true,
   defaultFilter: "original",
   welcomeScreenMode: "live_preview",
+  extraPosesBuffer: 1,
 };
 
 export function loadOperatorConfig(): BoothOperatorConfig {

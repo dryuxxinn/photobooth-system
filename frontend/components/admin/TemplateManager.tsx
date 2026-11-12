@@ -192,6 +192,75 @@ export function TemplateManager({
             )}
           </select>
         </div>
+
+        {/* Kuota Pose Foto Tambahan (Buffer Pose Sesi) */}
+        <div className="pt-3 border-t border-sweet-border/60 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <span className="font-heading font-bold text-xs text-sweet-text block">
+              Buffer Pose Foto Tambahan (Kuota Sesi Dinamis):
+            </span>
+            <span className="text-[11px] text-sweet-muted font-heading font-semibold">
+              Formula: Slot Frame + Buffer
+            </span>
+          </div>
+          <p className="text-xs text-sweet-muted">
+            Tentukan berapa banyak foto cadangan yang diambil bilik kamera di setiap sesi agar pelanggan bisa memilih pose terbaik.
+          </p>
+          <div
+            role="radiogroup"
+            aria-label="Pilihan buffer pose tambahan"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1"
+          >
+            {[
+              {
+                value: 0,
+                label: "+0 Cadangan (Cepat)",
+                desc: "Ambil pas sesuai slot frame. Durasi sesi tercepat saat antrean bilik padat.",
+              },
+              {
+                value: 1,
+                label: "+1 Cadangan (Rekomendasi)",
+                desc: "Slot frame + 1 foto. Pelanggan punya 1 foto alternatif untuk dipilih.",
+              },
+              {
+                value: 2,
+                label: "+2 Cadangan (Santai)",
+                desc: "Slot frame + 2 foto. Lebih banyak pilihan pose untuk pelanggan.",
+              },
+            ].map((opt) => {
+              const isSelected = (config.extraPosesBuffer ?? 1) === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={readOnly}
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() =>
+                    onUpdateConfig({ ...config, extraPosesBuffer: opt.value })
+                  }
+                  className={`min-h-[48px] p-3 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-1.5 ${
+                    isSelected
+                      ? "bg-sweet-blush border-sweet-primaryStrong text-sweet-text shadow-xs"
+                      : "bg-white border-sweet-border text-sweet-muted hover:text-sweet-text"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-heading font-bold text-xs">
+                      {opt.label}
+                    </span>
+                    {isSelected && (
+                      <CheckIcon className="size-3.5 text-sweet-primaryStrong shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-sweet-muted leading-relaxed">
+                    {opt.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </Card>
 
       {/* Daftar Template & Upload Custom PNG Overlay */}

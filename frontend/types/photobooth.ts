@@ -187,6 +187,7 @@ export interface BoothOperatorConfig {
   defaultFilter?: string;
   defaultArPreset?: string;
   welcomeScreenMode?: "static" | "live_preview";
+  extraPosesBuffer?: number;
 }
 
 export interface CustomFilterPreset {

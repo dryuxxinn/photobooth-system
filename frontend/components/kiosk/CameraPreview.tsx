@@ -132,12 +132,12 @@ export function CameraPreview({
             <CameraIcon className="size-3.5 text-[#F472B6]" />
             <span>
               {mode === "preparation"
-                ? `Sesi 6 Pose • Frame ${photosRequired} Slot`
+                ? `Sesi ${photosRequired} Pose`
                 : `Foto ${
                     isReviewing
                       ? Math.max(1, photosTaken)
-                      : Math.min(photosTaken + 1, 6)
-                  } dari 6 Pose`}
+                      : Math.min(photosTaken + 1, photosRequired)
+                  } dari ${photosRequired} Pose`}
             </span>
           </div>
         </div>
