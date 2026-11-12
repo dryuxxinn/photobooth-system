@@ -319,11 +319,11 @@ export function PricingManager({
         </div>
       </Card>
 
-      {/* Info Integrasi DOKU QRIS Production */}
+      {/* Info Integrasi Gateway QRIS Production */}
       <Card variant="surface" padding="md" className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-heading font-bold text-sm text-sweet-text">
-            INFORMASI GATEWAY PEMBAYARAN DOKU
+            INFORMASI GATEWAY PEMBAYARAN QRIS
           </h3>
           <StatusBadge tone="success">Produksi Aktif</StatusBadge>
         </div>

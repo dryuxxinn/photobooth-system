@@ -79,7 +79,7 @@ export function PaymentModal({
       .catch((err: any) => {
         setQrisError(
           err?.message ||
-            "Gagal membuat kode QRIS DOKU. Pastikan koneksi dan kredensial DOKU aktif."
+            "Gagal memuat kode QRIS. Silakan coba lagi atau hubungi petugas kasir."
         );
       })
       .finally(() => setLoadingQris(false));
@@ -173,12 +173,12 @@ export function PaymentModal({
         setQrisError("Transaksi QRIS tidak berhasil. Silakan buat QRIS baru.");
       } else {
         setStatusNotice(
-          "Pembayaran belum terkonfirmasi dari DOKU. Jika Anda sudah membayar, mohon tunggu beberapa detik karena sistem sedang memverifikasi otomatis."
+          "Pembayaran belum terkonfirmasi. Jika Anda sudah membayar, mohon tunggu beberapa detik karena sistem sedang memverifikasi otomatis."
         );
       }
     } catch (err: any) {
       setQrisError(
-        err?.message || "Gagal memeriksa status pembayaran ke server DOKU."
+        err?.message || "Gagal memeriksa status pembayaran ke server."
       );
     } finally {
       setCheckingStatus(false);
@@ -227,7 +227,7 @@ export function PaymentModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Pembayaran Sesi Photobooth"
-      subtitle="Pindai QRIS DOKU resmi atau masukkan kode voucher kasir untuk mulai berfoto."
+      subtitle="Pindai kode QRIS resmi atau masukkan kode voucher kasir untuk mulai berfoto."
       maxWidthClass="max-w-lg"
     >
       <div className="space-y-4">
@@ -306,7 +306,7 @@ export function PaymentModal({
                 <div className="size-[210px] flex flex-col items-center justify-center gap-2">
                   <SpinnerIcon className="size-8 text-sweet-primaryStrong animate-spin" />
                   <span className="text-xs font-heading font-bold text-sweet-muted">
-                    Menghubungkan ke DOKU QRIS...
+                    Menyiapkan kode QRIS...
                   </span>
                 </div>
               ) : qrisError || !qrisTx?.qr_string ? (
@@ -321,7 +321,7 @@ export function PaymentModal({
                     QRIS Belum Dapat Ditampilkan
                   </span>
                   <p className="text-[11px] text-sweet-muted leading-relaxed">
-                    {qrisError || "Menunggu respons dari server pembayaran DOKU."}
+                    {qrisError || "Menunggu respons dari server pembayaran QRIS."}
                   </p>
                   <Button
                     variant="strong"

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import {
+  CustomFilterPreset,
   FrameThemeOption,
   SessionDetail,
   TemplateOption,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/config";
 import { DEFAULT_AR_PRESETS, PHOTO_FILTERS } from "@/lib/defaults";
 import { useIdleCountdown } from "@/hooks/useIdleCountdown";
-import { resolveStorageUrl } from "@/services/api";
+import { photoboothApi, resolveStorageUrl } from "@/services/api";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -88,6 +89,31 @@ export function PhotoPreview({
     return () => clearInterval(timer);
   }, [viewTab, slidePaused, session.photos.length]);
 
+  const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+
+  useEffect(() => {
+    photoboothApi
+      .getCustomFilters()
+      .then((res) => {
+        if (res?.presets && Array.isArray(res.presets)) {
+          setCustomPresets(res.presets);
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  const availableFilters = React.useMemo(() => {
+    const customOptions = customPresets
+      .filter((p) => p.is_active !== false)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        desc: "Preset Studio",
+        css: "none",
+      }));
+    return [...PHOTO_FILTERS, ...customOptions];
+  }, [customPresets]);
+
   const compositeUrl = resolveStorageUrl(
     session.processed_image_url,
     imageVersion
@@ -98,7 +124,7 @@ export function PhotoPreview({
 
   const activeTemplate = templates.find((t) => t.id === session.template_id);
   const activeTheme = frameThemes.find((f) => f.id === session.frame_color);
-  const activeFilter = PHOTO_FILTERS.find(
+  const activeFilter = availableFilters.find(
     (f) => f.id === (session.filter_name || "original")
   );
   const activeArPreset = DEFAULT_AR_PRESETS.find(
@@ -457,7 +483,7 @@ export function PhotoPreview({
 
                   {quickTab === "filter" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                      {PHOTO_FILTERS.map((flt) => {
+                      {availableFilters.map((flt) => {
                         const isSel =
                           (session.filter_name || "original") === flt.id;
                         return (

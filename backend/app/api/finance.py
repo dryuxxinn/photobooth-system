@@ -22,9 +22,12 @@ class SettlementRuleModel(BaseModel):
     id: Optional[str] = None
     name: str = Field(..., min_length=1)
     basis: str = Field(default="PER_PHOTO")  # "PER_PHOTO" or "PER_SETTLEMENT"
-    deduction_type: str = Field(default="FIXED")  # "FIXED" or "PERCENT"
+    deduction_type: Optional[str] = None  # "FIXED" or "PERCENT"
+    rule_type: Optional[str] = None  # alias: "percentage" or "fixed"
     value: float = Field(..., ge=0)
-    min_threshold: float = Field(default=0.0, ge=0)
+    min_threshold: Optional[float] = None
+    min_gross_threshold: Optional[float] = None  # alias for min_threshold
+    description: Optional[str] = None
     is_active: bool = True
 
 
@@ -96,7 +99,7 @@ def calculate_settlement_data(
             },
             {
                 "id": "rule_qris_mdr",
-                "name": "Biaya Transaksi QRIS (MDR DOKU)",
+                "name": "Biaya Transaksi QRIS (MDR Gateway)",
                 "basis": "PER_PHOTO",
                 "deduction_type": "PERCENT",
                 "value": 0.7,
@@ -123,9 +126,10 @@ def calculate_settlement_data(
 
         r_name = r.get("name", "Potongan")
         basis = str(r.get("basis", "PER_PHOTO")).upper()
-        dtype = str(r.get("deduction_type", "FIXED")).upper()
+        raw_dtype = str(r.get("deduction_type") or r.get("rule_type") or "FIXED").upper()
+        dtype = "PERCENT" if raw_dtype in ("PERCENTAGE", "PERCENT", "%") else "FIXED"
         val = float(r.get("value", 0.0))
-        min_thresh = float(r.get("min_threshold", 0.0))
+        min_thresh = float(r.get("min_threshold") if r.get("min_threshold") is not None else (r.get("min_gross_threshold") or 0.0))
 
         calculated_amount = 0.0
         desc = ""
@@ -249,7 +253,7 @@ def get_settlement_rules():
             },
             {
                 "id": "rule_qris_mdr",
-                "name": "Biaya Transaksi QRIS (MDR DOKU)",
+                "name": "Biaya Transaksi QRIS (MDR Gateway)",
                 "basis": "PER_PHOTO",
                 "deduction_type": "PERCENT",
                 "value": 0.7,
@@ -277,6 +281,17 @@ def save_settlement_rule(payload: SettlementRuleModel, request: Request):
     """Add or update a settlement deduction rule. Restricted to Admin."""
     require_admin(request)
     data = payload.model_dump()
+    basis = str(payload.basis or "PER_PHOTO").upper()
+    raw_dtype = str(payload.deduction_type or payload.rule_type or "FIXED").upper()
+    dtype = "PERCENT" if raw_dtype in ("PERCENTAGE", "PERCENT", "%") else "FIXED"
+    threshold = float(
+        payload.min_threshold
+        if payload.min_threshold is not None
+        else (payload.min_gross_threshold or 0.0)
+    )
+    data["basis"] = basis
+    data["deduction_type"] = dtype
+    data["min_threshold"] = threshold
     if not data.get("id"):
         data["id"] = f"rule_{uuid.uuid4().hex[:8]}"
     saved = get_db_service().save_settlement_rule(data)

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BoothOperatorConfig,
+  CustomFilterPreset,
   FrameThemeOption,
   TemplateOption,
 } from "@/types/photobooth";
@@ -32,6 +33,18 @@ export function TemplateManager({
 }: TemplateManagerProps) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [overlayNotice, setOverlayNotice] = useState<string | null>(null);
+  const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+
+  useEffect(() => {
+    photoboothApi
+      .getCustomFilters()
+      .then((res) => {
+        if (res?.presets && Array.isArray(res.presets)) {
+          setCustomPresets(res.presets);
+        }
+      })
+      .catch(() => null);
+  }, []);
 
   const handleOverlayFileChange = async (
     templateId: string,
@@ -161,11 +174,22 @@ export function TemplateManager({
             }}
             className="w-full max-w-md min-h-[44px] px-3.5 py-2 rounded-xl bg-white border border-sweet-border text-xs font-heading font-bold text-sweet-text"
           >
-            {PHOTO_FILTERS.map((flt) => (
-              <option key={flt.id} value={flt.id}>
-                {flt.name} : {flt.desc}
-              </option>
-            ))}
+            <optgroup label="Filter Bawaan">
+              {PHOTO_FILTERS.map((flt) => (
+                <option key={flt.id} value={flt.id}>
+                  {flt.name} : {flt.desc}
+                </option>
+              ))}
+            </optgroup>
+            {customPresets.length > 0 && (
+              <optgroup label="Preset Studio Kustom">
+                {customPresets.map((prs) => (
+                  <option key={prs.id} value={prs.id}>
+                    {prs.name} (Custom Studio)
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
       </Card>

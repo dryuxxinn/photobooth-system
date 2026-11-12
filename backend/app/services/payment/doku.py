@@ -434,7 +434,7 @@ class DokuPaymentService:
         """
         if not self.is_configured:
             raise RuntimeError(
-                "Kredensial DOKU (DOKU_CLIENT_ID dan DOKU_SECRET_KEY) belum diatur di file .env server."
+                "Kredensial gateway pembayaran QRIS belum diatur di file .env server."
             )
 
         now_dt = datetime.now(timezone.utc)
@@ -562,8 +562,8 @@ class DokuPaymentService:
         except Exception as e:
             errors.append(f"Direct QRIS Error: {e}")
 
-        error_summary = " | ".join(errors) if errors else "Tidak ada respons valid dari server DOKU."
-        raise RuntimeError(f"Gagal membuat QRIS DOKU: {error_summary}")
+        error_summary = " | ".join(errors) if errors else "Tidak ada respons valid dari server pembayaran."
+        raise RuntimeError(f"Gagal membuat kode QRIS: {error_summary}")
 
 
 _doku_service_instance: Optional[DokuPaymentService] = None

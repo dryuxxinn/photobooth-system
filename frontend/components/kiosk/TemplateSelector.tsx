@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  CustomFilterPreset,
   FrameThemeOption,
   SessionDetail,
   TemplateOption,
@@ -10,6 +11,7 @@ import {
   DEFAULT_AR_PRESETS,
   DEFAULT_STICKER_OPTIONS,
   PHOTO_FILTERS,
+  buildFilterCssFromParams,
 } from "@/lib/defaults";
 import { inkFor } from "@/lib/color";
 import { photoboothApi, resolveStorageUrl } from "@/services/api";
@@ -82,6 +84,40 @@ export function TemplateSelector({
   const [draftCaption, setDraftCaption] = useState<string>(
     session.customer_name || ""
   );
+  const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+
+  useEffect(() => {
+    photoboothApi
+      .getCustomFilters()
+      .then((res) => {
+        if (res?.presets && Array.isArray(res.presets)) {
+          setCustomPresets(res.presets);
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  const availableFilters = useMemo(() => {
+    const customOptions = customPresets
+      .filter((p) => p.is_active !== false)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        desc: "Preset Studio",
+        css: buildFilterCssFromParams(
+          p.params || {
+            brightness: p.brightness,
+            contrast: p.contrast,
+            saturation: p.saturation,
+            temperature: p.temperature,
+            tint: p.tint,
+            smoothness: p.smoothness,
+          }
+        ),
+      }));
+    return [...PHOTO_FILTERS, ...customOptions];
+  }, [customPresets]);
+
   const [previewMode, setPreviewMode] = useState<"frame" | "pose">("frame");
   const [aiPosePreviewUrl, setAiPosePreviewUrl] = useState<string | null>(null);
   const [aiPoseLoading, setAiPoseLoading] = useState<boolean>(false);
@@ -355,10 +391,10 @@ export function TemplateSelector({
                   <div className="flex items-center justify-between">
                     <h2 className="font-heading font-extrabold text-sm text-sweet-text flex items-center gap-2">
                       <SparkleIcon className="size-4 text-sweet-primaryStrong" />
-                      <span>Filter Warna & Beauty Cam (10 Tone)</span>
+                      <span>Filter Warna & Beauty Cam ({availableFilters.length} Pilihan)</span>
                     </h2>
                     <span className="text-xs font-heading font-extrabold text-sweet-primaryStrong">
-                      {PHOTO_FILTERS.find((f) => f.id === draftFilter)?.name || "Natural"}
+                      {availableFilters.find((f) => f.id === draftFilter)?.name || "Natural"}
                     </span>
                   </div>
                   <div
@@ -366,7 +402,7 @@ export function TemplateSelector({
                     aria-label="Pilihan filter foto"
                     className="grid grid-cols-2 sm:grid-cols-5 gap-2"
                   >
-                    {PHOTO_FILTERS.map((flt, idx) => {
+                    {availableFilters.map((flt, idx) => {
                       const isSelected = flt.id === draftFilter;
                       const staggerClass = `stagger-${Math.min((idx % 6) + 1, 6)}`;
                       return (

@@ -438,9 +438,22 @@ class DatabaseService:
         rule_id = rule_data.get("id") or f"rule_{uuid.uuid4().hex[:8]}"
         name = rule_data.get("name") or "Aturan Potongan"
         basis = str(rule_data.get("basis", "PER_PHOTO")).upper()
-        deduction_type = str(rule_data.get("deduction_type", "FIXED")).upper()
+        raw_dtype = str(
+            rule_data.get("deduction_type")
+            or rule_data.get("rule_type")
+            or "FIXED"
+        ).upper()
+        deduction_type = (
+            "PERCENT"
+            if raw_dtype in ("PERCENTAGE", "PERCENT", "%")
+            else "FIXED"
+        )
         value = float(rule_data.get("value", 0.0))
-        min_threshold = float(rule_data.get("min_threshold", 0.0))
+        min_threshold = float(
+            rule_data.get("min_threshold")
+            if rule_data.get("min_threshold") is not None
+            else (rule_data.get("min_gross_threshold") or 0.0)
+        )
         is_active = 1 if rule_data.get("is_active", True) else 0
 
         with self._get_conn() as conn:
