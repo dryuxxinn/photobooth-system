@@ -375,7 +375,7 @@ export function usePhotoboothSession() {
       if (curr) {
         const nextState = curr.session
           ? curr.session.status
-          : curr.state || "IDLE";
+          : "IDLE";
         setState(nextState);
         setSession(curr.session);
 
@@ -548,6 +548,32 @@ export function usePhotoboothSession() {
         setIsBusy(false);
         await runAutomatedCaptureSequence(started);
       } catch (err: any) {
+        if (
+          err?.status === 409 ||
+          String(err?.message || "").includes("Cannot start a new session")
+        ) {
+          try {
+            await photoboothApi.resetSession();
+            const started = await photoboothApi.startSession({
+              customer_name: customerName || undefined,
+              photos_required: captureQuota,
+              template_id: selectedTemplate.id,
+              frame_color: selectedFrameColor,
+              filter_name: selectedFilter,
+              payment_amount: pendingPayment ? pendingPayment.amount : defaultPrice,
+              payment_method: pendingPayment ? pendingPayment.method : "QRIS",
+              payment_status: "PAID",
+              payment_ref: pendingPayment?.ref || undefined,
+            });
+            setSession(started);
+            setState(started.status);
+            setIsBusy(false);
+            await runAutomatedCaptureSequence(started);
+            return;
+          } catch {
+            // Fall through to error reporting below
+          }
+        }
         const msg = err?.message || "Gagal memulai sesi photobooth.";
         setErrorBanner(msg);
         setAssertiveMessage(msg);

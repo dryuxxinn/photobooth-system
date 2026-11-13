@@ -141,7 +141,11 @@ class DatabaseService:
                     """
                     UPDATE sessions
                     SET status = 'COMPLETED'
-                    WHERE status = 'IDLE' AND (processed_image_path IS NOT NULL OR photos_taken > 0)
+                    WHERE status = 'IDLE' AND (
+                        processed_path IS NOT NULL
+                        OR completed_at IS NOT NULL
+                        OR id IN (SELECT DISTINCT session_id FROM photos)
+                    )
                     """
                 )
             except Exception:
@@ -261,12 +265,18 @@ class DatabaseService:
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         with self._get_conn() as conn:
             row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            if not row and (" " in session_id or "+" in session_id or "%20" in session_id):
+                alt = session_id.replace(" ", "+").replace("%20", "+")
+                row = conn.execute("SELECT * FROM sessions WHERE id = ?", (alt,)).fetchone()
+            if not row and "+" in session_id:
+                alt2 = session_id.replace("+", " ")
+                row = conn.execute("SELECT * FROM sessions WHERE id = ?", (alt2,)).fetchone()
             if not row:
                 return None
             row_keys = row.keys()
             photos = conn.execute(
                 "SELECT * FROM photos WHERE session_id = ? ORDER BY photo_index ASC",
-                (session_id,),
+                (row["id"],),
             ).fetchall()
 
             proc_path = row["processed_path"]
@@ -276,10 +286,18 @@ class DatabaseService:
             gif_path = row["gif_path"] if "gif_path" in row_keys else None
             gif_url = f"/storage/processed/{Path(gif_path).name}" if gif_path else None
 
+            status_val = row["status"]
+            if hasattr(status_val, "value"):
+                status_str = status_val.value
+            elif status_val:
+                status_str = str(status_val).upper()
+            else:
+                status_str = "COMPLETED"
+
             return {
                 "session_id": row["id"],
                 "customer_name": row["customer_name"],
-                "status": row["status"],
+                "status": status_str,
                 "photos_required": row["photos_required"],
                 "photos_taken": len(photos),
                 "template_id": row["template_id"],

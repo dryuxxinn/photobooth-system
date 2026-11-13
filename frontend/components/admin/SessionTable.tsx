@@ -45,15 +45,18 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
 
   // Filter sessions by search text and status
   const filteredSessions = useMemo(() => {
-    return sessions.filter((s) => {
+    return (sessions || []).filter((s) => {
+      if (!s || !s.session_id) return false;
       const matchSearch =
         s.session_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.customer_name &&
-          s.customer_name.toLowerCase().includes(searchQuery.toLowerCase()));
+        Boolean(
+          s.customer_name &&
+            s.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
 
+      const statusVal = s.status ? String(s.status).toUpperCase() : "";
       const matchStatus =
-        statusFilter === "ALL" ||
-        s.status.toUpperCase() === statusFilter.toUpperCase();
+        statusFilter === "ALL" || statusVal === statusFilter.toUpperCase();
 
       return matchSearch && matchStatus;
     });

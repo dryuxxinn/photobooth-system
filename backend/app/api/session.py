@@ -67,6 +67,7 @@ def start_session(payload: StartSessionRequest = StartSessionRequest()):
             payment_method=payload.payment_method or "QRIS",
             payment_status=payload.payment_status or "PAID",
             payment_ref=payload.payment_ref,
+            force=bool(payload.force),
         )
         return SessionDetailResponse(**session)
     except SessionTransitionError as e:
@@ -112,15 +113,25 @@ def update_operator_config_endpoint(payload: Dict[str, Any] = Body(default={})):
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
 def get_session_by_id(session_id: str):
+    import urllib.parse
+
     manager = get_session_manager()
     session = manager.get_current_session()
     if session is not None and session["session_id"] == session_id:
         return SessionDetailResponse(**session)
 
     # Check historical database if session already completed
-    db_session = get_db_service().get_session(session_id)
-    if db_session is not None:
-        return SessionDetailResponse(**db_session)
+    db = get_db_service()
+    candidates = [
+        session_id,
+        session_id.replace(" ", "+"),
+        urllib.parse.unquote(session_id),
+        urllib.parse.unquote_plus(session_id),
+    ]
+    for cid in candidates:
+        db_session = db.get_session(cid)
+        if db_session is not None:
+            return SessionDetailResponse(**db_session)
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,

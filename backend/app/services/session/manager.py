@@ -140,12 +140,21 @@ class SessionManager:
         payment_method: str = "QRIS",
         payment_status: str = "PAID",
         payment_ref: Optional[str] = None,
+        force: bool = False,
     ) -> Dict[str, Any]:
         if self.state != SessionState.IDLE:
-            raise SessionTransitionError(
-                f"Cannot start a new session while current session is in '{self.state.value}'. "
-                f"Please finish or abort the current session first."
-            )
+            # Auto-recover if previous state was already terminal (COMPLETED, ABORTED, ERROR)
+            if self.state in (SessionState.COMPLETED, SessionState.ABORTED, SessionState.ERROR):
+                self.reset_to_idle()
+            # If force requested or previous session had 0 photos, abort old session and restart cleanly
+            elif force or (self.current_session and self.current_session.get("photos_taken", 0) == 0):
+                self.abort_session("Sesi sebelumnya dibatalkan otomatis untuk memulai sesi baru.")
+                self.reset_to_idle()
+            else:
+                raise SessionTransitionError(
+                    f"Cannot start a new session while current session is in '{self.state.value}'. "
+                    f"Please finish or abort the current session first."
+                )
 
         # Find default frame color for template if not specified
         tpl_meta = next(

@@ -38,6 +38,7 @@ class StartSessionRequest(BaseModel):
     payment_method: Optional[str] = "QRIS"
     payment_status: Optional[str] = "PAID"
     payment_ref: Optional[str] = None
+    force: Optional[bool] = False
 
 
 class CapturePhotoRequest(BaseModel):
@@ -103,6 +104,7 @@ class SessionDetailResponse(BaseModel):
     payment_method: Optional[str] = "QRIS"
     payment_status: Optional[str] = "PAID"
     payment_ref: Optional[str] = None
+    force: Optional[bool] = False
 
 
 class SessionCurrentResponse(BaseModel):

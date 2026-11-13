@@ -168,7 +168,7 @@ export default function KioskHomePage() {
         }`}
       >
         {/* 1. Welcome Screen (Section 3.A) */}
-        {kioskStep === "WELCOME" && state === "IDLE" && (
+        {kioskStep === "WELCOME" && (state === "IDLE" || !session) && (
           <WelcomeScreen
             templates={templates}
             frameThemes={frameThemes}
@@ -188,7 +188,7 @@ export default function KioskHomePage() {
         )}
 
         {/* 2. Preparation & Package Selection Screen (Section 3.B & 3.C) */}
-        {kioskStep === "PREPARATION" && state === "IDLE" && (
+        {kioskStep === "PREPARATION" && (state === "IDLE" || !session) && (
           <PreparationScreen
             cameraStatus={cameraStatus}
             printerStatus={printerStatus}
