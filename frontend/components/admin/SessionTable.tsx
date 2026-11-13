@@ -2,12 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { QRCodeSVG } from "qrcode.react";
 import { SessionDetail } from "@/types/photobooth";
 import { photoboothApi, resolveStorageUrl } from "@/services/api";
-import { loadOperatorConfig } from "@/lib/config";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { QrDialog } from "@/components/QrDialog";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   CheckIcon,
@@ -45,71 +44,8 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
   // QR & Share Modal state
   const [activeShareSession, setActiveShareSession] =
     useState<SessionDetail | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // Filter sessions by search text and status
-  const filteredSessions = useMemo(() => {
-    return sessions.filter((s) => {
-      const matchSearch =
-        s.session_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.customer_name &&
-          s.customer_name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      const matchStatus =
-        statusFilter === "ALL" ||
-        s.status.toUpperCase() === statusFilter.toUpperCase();
-
-      return matchSearch && matchStatus;
-    });
-  }, [sessions, searchQuery, statusFilter]);
-
-  const handleReprint = async (session: SessionDetail) => {
-    setReprintingId(session.session_id);
-    setActionNotice(null);
-    try {
-      const res = await photoboothApi.reprintSession(session.session_id, 1);
-      setActionNotice({
-        id: session.session_id,
-        msg: res.message || "Berhasil dikirim ke printer.",
-        tone: "success",
-      });
-      if (onRefresh) await onRefresh();
-    } catch (err: any) {
-      setActionNotice({
-        id: session.session_id,
-        msg: err?.message || "Gagal mencetak ulang.",
-        tone: "error",
-      });
-    } finally {
-      setReprintingId(null);
-      setTimeout(() => setActionNotice(null), 4000);
-    }
-  };
-
-  const getPublicShareUrl = (session: SessionDetail) => {
-    const cfg = loadOperatorConfig();
-    const base = (cfg.publicShareBaseUrl || "").trim().replace(/\/$/, "");
-    if (base) {
-      return `${base}/share/${session.session_id}`;
-    }
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/share/${session.session_id}`;
-    }
-    return `/share/${session.session_id}`;
-  };
-
-  const handleCopyShareLink = async (url: string) => {
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      }
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    } catch {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    }
-  };
 
   return (
     <Card variant="surface" padding="md" className="space-y-4">
@@ -226,6 +162,14 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
               {filteredSessions.map((s) => {
                 const isDone = s.status === "COMPLETED";
                 const isErr = s.status === "ERROR" || s.status === "ABORTED";
+                const canShare = Boolean(
+                  s.processed_image_url ||
+                  (s.photos && s.photos.length > 0) ||
+                  s.photos_taken > 0 ||
+                  s.status === "COMPLETED" ||
+                  s.status === "IDLE"
+                );
+                const canReprint = Boolean(s.processed_image_url);
                 const isReprinting = reprintingId === s.session_id;
                 const notice =
                   actionNotice?.id === s.session_id ? actionNotice : null;
@@ -335,21 +279,21 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
                           <span>Galeri</span>
                         </button>
 
-                        {/* Tombol Bagi / QR Code Modal */}
-                        {isDone && (
+                        {/* Tombol Scan QR Galeri (seperti di CompletionScreen) */}
+                        {canShare && (
                           <button
                             type="button"
                             onClick={() => setActiveShareSession(s)}
                             className="min-h-[44px] px-3 py-1.5 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong text-[11px] font-heading font-bold inline-flex items-center gap-1.5 transition-colors"
-                            title="Tampilkan QR Galeri Digital untuk pelanggan"
+                            title="Pindai QR untuk membuka link galeri foto di HP pelanggan"
                           >
                             <QrIcon className="size-3.5 text-sweet-primaryStrong" />
-                            <span>Bagi QR</span>
+                            <span>Scan QR</span>
                           </button>
                         )}
 
                         {/* Tombol Cetak Ulang (Reprint) */}
-                        {isDone && (
+                        {canReprint && (
                           <button
                             type="button"
                             disabled={isReprinting}
@@ -597,39 +541,36 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
             {/* Modal Actions Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-sweet-border">
               <div className="flex items-center gap-2">
-                {selectedGallerySession.status === "COMPLETED" && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={reprintingId === selectedGallerySession.session_id}
-                      onClick={() => handleReprint(selectedGallerySession)}
-                      className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                    >
-                      {reprintingId === selectedGallerySession.session_id ? (
-                        <SpinnerIcon className="size-4 animate-spin" />
-                      ) : (
-                        <PrinterIcon className="size-4" />
-                      )}
-                      <span>
-                        {reprintingId === selectedGallerySession.session_id
-                          ? "Mencetak..."
-                          : "Cetak Ulang (Reprint)"}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const target = selectedGallerySession;
-                        setSelectedGallerySession(null);
-                        setActiveShareSession(target);
-                      }}
-                      className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong font-heading font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <QrIcon className="size-4 text-sweet-primaryStrong" />
-                      <span>Buka QR Pelanggan</span>
-                    </button>
-                  </>
+                {Boolean(selectedGallerySession.processed_image_url) && (
+                  <button
+                    type="button"
+                    disabled={reprintingId === selectedGallerySession.session_id}
+                    onClick={() => handleReprint(selectedGallerySession)}
+                    className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {reprintingId === selectedGallerySession.session_id ? (
+                      <SpinnerIcon className="size-4 animate-spin" />
+                    ) : (
+                      <PrinterIcon className="size-4" />
+                    )}
+                    <span>
+                      {reprintingId === selectedGallerySession.session_id
+                        ? "Mencetak..."
+                        : "Cetak Ulang (Reprint)"}
+                    </span>
+                  </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedGallerySession;
+                    setActiveShareSession(target);
+                  }}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-sweet-border text-sweet-text hover:border-sweet-primaryStrong font-heading font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <QrIcon className="size-4 text-sweet-primaryStrong" />
+                  <span>Scan QR Galeri</span>
+                </button>
               </div>
               <button
                 type="button"
@@ -643,77 +584,23 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
         </Modal>
       )}
 
-      {/* Modal Bagi QR & Link Download untuk Pelanggan */}
+      {/* Dialog Scan QR ke Galeri Digital (persis seperti setelah sesi foto selesai) */}
       {activeShareSession && (
-        <Modal
+        <QrDialog
           isOpen={Boolean(activeShareSession)}
           onClose={() => setActiveShareSession(null)}
-          title="Galeri Digital Pelanggan"
-          subtitle={`Sesi: ${activeShareSession.session_id}`}
-          maxWidthClass="max-w-md"
-        >
-          <div className="space-y-4 text-center">
-            <div className="p-4 rounded-2xl bg-white border border-sweet-border inline-block shadow-xs">
-              <QRCodeSVG
-                value={getPublicShareUrl(activeShareSession)}
-                size={192}
-                level="M"
-                includeMargin={false}
-              />
-            </div>
-
-            <p className="text-xs text-sweet-muted">
-              Pindai kode QR di atas untuk membuka galeri foto digital dan animasi GIF langsung di ponsel pelanggan.
-            </p>
-
-            <div className="space-y-2 text-left">
-              <label
-                htmlFor="share-url-readonly"
-                className="font-heading font-bold text-xs text-sweet-text block"
-              >
-                Tautan Galeri Digital:
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="share-url-readonly"
-                  type="text"
-                  readOnly
-                  value={getPublicShareUrl(activeShareSession)}
-                  className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-sweet-bg border border-sweet-border text-xs font-mono text-sweet-text"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleCopyShareLink(getPublicShareUrl(activeShareSession))
-                  }
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-sweet-primary hover:bg-sweet-primaryStrong text-sweet-text font-heading font-bold text-xs border border-sweet-primaryStrong/40 shrink-0 inline-flex items-center gap-1.5 transition-colors"
-                >
-                  {copiedLink ? (
-                    <>
-                      <CheckIcon className="size-4 text-sweet-text" />
-                      <span>Tersalin!</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShareIcon className="size-4" />
-                      <span>Salin</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveShareSession(null)}
-                className="min-h-[44px] px-5 py-2 rounded-xl bg-sweet-bg hover:bg-sweet-surface text-sweet-text font-heading font-bold text-xs border border-sweet-border"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </Modal>
+          imageUrl={resolveStorageUrl(activeShareSession.processed_image_url)}
+          gifUrl={resolveStorageUrl(activeShareSession.gif_url)}
+          sessionId={activeShareSession.session_id}
+          onDownloadOrShare={async () => {
+            const targetUrl =
+              resolveStorageUrl(activeShareSession.gif_url) ||
+              resolveStorageUrl(activeShareSession.processed_image_url);
+            if (targetUrl) {
+              window.open(targetUrl, "_blank", "noopener,noreferrer");
+            }
+          }}
+        />
       )}
     </Card>
   );

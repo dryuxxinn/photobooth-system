@@ -135,6 +135,18 @@ class DatabaseService:
                     except Exception:
                         pass
 
+            # Fix legacy sessions mistakenly stored with status 'IDLE' upon completion
+            try:
+                conn.execute(
+                    """
+                    UPDATE sessions
+                    SET status = 'COMPLETED'
+                    WHERE status = 'IDLE' AND (processed_image_path IS NOT NULL OR photos_taken > 0)
+                    """
+                )
+            except Exception:
+                pass
+
     def save_session(self, session: Dict[str, Any]) -> None:
         with self._get_conn() as conn:
             conn.execute(

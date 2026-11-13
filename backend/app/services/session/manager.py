@@ -538,19 +538,39 @@ class SessionManager:
         self._transition_to(SessionState.COMPLETED)
 
         result = dict(session)
-        self._transition_to(SessionState.IDLE)
+        # Clear current_session so returning manager machine to IDLE does not overwrite COMPLETED in DB
         self.current_session = None
+        self.state = SessionState.IDLE
+        self._emit_event(
+            "STATE_CHANGE",
+            {
+                "from": SessionState.COMPLETED.value,
+                "to": SessionState.IDLE.value,
+                "session_id": result.get("session_id"),
+            },
+        )
         return result
 
     def abort_session(self, reason: str = "User aborted session") -> Dict[str, Any]:
         if self.state == SessionState.IDLE:
             return {"message": "System is already IDLE"}
 
+        sid = None
         if self.current_session:
             self.current_session["error_message"] = reason
-        self._transition_to(SessionState.ABORTED)
-        self._transition_to(SessionState.IDLE)
+            self._transition_to(SessionState.ABORTED)
+            sid = self.current_session.get("session_id")
+
         self.current_session = None
+        self.state = SessionState.IDLE
+        self._emit_event(
+            "STATE_CHANGE",
+            {
+                "from": SessionState.ABORTED.value,
+                "to": SessionState.IDLE.value,
+                "session_id": sid,
+            },
+        )
         return {"message": "Session aborted and reset to IDLE"}
 
     def reset_to_idle(self) -> None:
