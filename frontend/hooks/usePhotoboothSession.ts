@@ -526,12 +526,13 @@ export function usePhotoboothSession() {
       setErrorBanner(null);
       setCaptureError(null);
       setIsBusy(true);
-      try {
-        const defaultPrice = operatorConfig.sessionPriceIdr ?? 35000;
-        const extraBuffer = operatorConfig.extraPosesBuffer ?? 1;
-        const templateSlots = selectedTemplate.photos_required || 3;
-        const captureQuota = Math.max(templateSlots, templateSlots + extraBuffer);
 
+      const defaultPrice = operatorConfig.sessionPriceIdr ?? 35000;
+      const extraBuffer = operatorConfig.extraPosesBuffer ?? 1;
+      const templateSlots = selectedTemplate.photos_required || 3;
+      const captureQuota = Math.max(templateSlots, templateSlots + extraBuffer);
+
+      try {
         const started = await photoboothApi.startSession({
           customer_name: customerName || undefined,
           photos_required: captureQuota,
