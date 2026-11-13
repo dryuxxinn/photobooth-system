@@ -9,13 +9,11 @@ import { Modal } from "@/components/ui/Modal";
 import { QrDialog } from "@/components/QrDialog";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
-  CheckIcon,
   DownloadIcon,
   EyeIcon,
   PrinterIcon,
   QrIcon,
   RefreshIcon,
-  ShareIcon,
   SpinnerIcon,
 } from "@/components/icons";
 
@@ -46,6 +44,43 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
     useState<SessionDetail | null>(null);
 
   // Filter sessions by search text and status
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((s) => {
+      const matchSearch =
+        s.session_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.customer_name &&
+          s.customer_name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchStatus =
+        statusFilter === "ALL" ||
+        s.status.toUpperCase() === statusFilter.toUpperCase();
+
+      return matchSearch && matchStatus;
+    });
+  }, [sessions, searchQuery, statusFilter]);
+
+  const handleReprint = async (session: SessionDetail) => {
+    setReprintingId(session.session_id);
+    setActionNotice(null);
+    try {
+      const res = await photoboothApi.reprintSession(session.session_id, 1);
+      setActionNotice({
+        id: session.session_id,
+        msg: res.message || "Berhasil dikirim ke printer.",
+        tone: "success",
+      });
+      if (onRefresh) await onRefresh();
+    } catch (err: any) {
+      setActionNotice({
+        id: session.session_id,
+        msg: err?.message || "Gagal mencetak ulang.",
+        tone: "error",
+      });
+    } finally {
+      setReprintingId(null);
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
 
   return (
     <Card variant="surface" padding="md" className="space-y-4">
