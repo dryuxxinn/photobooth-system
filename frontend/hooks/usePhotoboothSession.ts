@@ -553,7 +553,7 @@ export function usePhotoboothSession() {
           String(err?.message || "").includes("Cannot start a new session")
         ) {
           try {
-            await photoboothApi.resetSession();
+            await photoboothApi.resetSystem();
             const started = await photoboothApi.startSession({
               customer_name: customerName || undefined,
               photos_required: captureQuota,
@@ -564,6 +564,7 @@ export function usePhotoboothSession() {
               payment_method: pendingPayment ? pendingPayment.method : "QRIS",
               payment_status: "PAID",
               payment_ref: pendingPayment?.ref || undefined,
+              force: true,
             });
             setSession(started);
             setState(started.status);

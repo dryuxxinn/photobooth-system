@@ -184,6 +184,7 @@ export const photoboothApi = {
     payment_method?: string;
     payment_status?: string;
     payment_ref?: string | null;
+    force?: boolean;
   }) =>
     request<SessionDetail>("/session/start", {
       method: "POST",
@@ -334,6 +335,11 @@ export const photoboothApi = {
     }),
 
   resetSystem: () =>
+    request<{ message: string }>("/session/reset", {
+      method: "POST",
+    }),
+
+  resetSession: () =>
     request<{ message: string }>("/session/reset", {
       method: "POST",
     }),
