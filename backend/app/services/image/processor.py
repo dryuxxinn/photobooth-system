@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from PIL import Image, ImageDraw, ImageOps, ImageEnhance, ImageFilter
 
 from backend.app.core.config import settings
+from backend.app.services.image.imposition import PrintImpositionEngine
 
 
 class ImageProcessor:
@@ -153,6 +154,28 @@ class ImageProcessor:
             "prints_doubled": True,
             "default_frame": "pink",
             "description": "Empat pose vertikal dengan dekorasi Sweet Studio yang digandakan menjadi 2 strip kembar.",
+        },
+        {
+            "id": "quad_mini_4",
+            "name": "Quad Mini 2x3 Cards (4 Pose)",
+            "photos_required": 4,
+            "layout": "quad_mini",
+            "category": "mini",
+            "aspect_label": "4x 2x3 Mini • 4 Foto",
+            "prints_doubled": False,
+            "default_frame": "cream",
+            "description": "Empat mini foto 2x3 inch dalam grid 2x2 siap potong silang pada media 4R.",
+        },
+        {
+            "id": "mixed_hero_3",
+            "name": "Custom Mixed Hero (3 Pose)",
+            "photos_required": 3,
+            "layout": "custom_mixed",
+            "category": "mixed",
+            "aspect_label": "1x 4x4 + 2x 2x2 • 3 Foto",
+            "prints_doubled": False,
+            "default_frame": "pink",
+            "description": "Satu foto hero 4x4 inch dipadukan dengan 2 mini foto 2x2 inch siap potong.",
         },
         {
             "id": "grid_2x2_4",
@@ -810,6 +833,14 @@ class ImageProcessor:
             res_path = cls._compose_grid_2x2(
                 valid_paths[:4], output_path, branding_text, filter_name, theme, customer_name, sticker_id
             )
+        elif template_id == "quad_mini_4":
+            res_path = cls._compose_quad_mini(
+                valid_paths, output_path, branding_text, filter_name, theme, customer_name, sticker_id
+            )
+        elif template_id == "mixed_hero_3":
+            res_path = cls._compose_custom_mixed(
+                valid_paths, output_path, branding_text, filter_name, theme, customer_name, sticker_id
+            )
         elif template_id == "cinema_ticket_4":
             res_path = cls._compose_cinema_ticket(
                 valid_paths, output_path, branding_text, filter_name, theme, customer_name
@@ -831,14 +862,11 @@ class ImageProcessor:
                 valid_paths, branding_text, filter_name, theme, customer_name, sticker_id=sticker_id
             )
             single_strip = cls._apply_custom_png_overlay(single_strip, template_id)
-            sw, sh = single_strip.size
-            twin = Image.new("RGB", (sw * 2 + 20, sh), color=theme["bg"])
-            twin.paste(single_strip, (0, 0))
-            twin.paste(single_strip, (sw + 20, 0))
-            draw = ImageDraw.Draw(twin)
-            mid_x = sw + 10
-            for y in range(20, sh - 20, 18):
-                draw.line([(mid_x, y), (mid_x, y + 8)], fill=theme["subtext"], width=2)
+            twin = PrintImpositionEngine.impose_double_strip(
+                single_strip,
+                bg_color=theme["bg"],
+                draw_cutting_guide=True,
+            )
             twin.save(output_path, "JPEG", quality=92)
             return output_path
         else:
@@ -1337,4 +1365,170 @@ class ImageProcessor:
         )
 
         canvas.save(output_path, "JPEG", quality=92)
+        return output_path
+
+    @classmethod
+    def _compose_quad_mini(
+        cls,
+        photo_paths: List[Path],
+        output_path: Path,
+        branding_text: str,
+        filter_name: str,
+        theme: Dict[str, Any],
+        customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
+    ) -> Path:
+        """
+        Layout B: 4x Mini Photo (each 2x3 inch = 600x900 px) in a 2x2 grid on a 4x6 media sheet (1200x1800 px).
+        Follows Section 4 & 5.3 of Sweetbooth Print Production System.
+        """
+        accent = theme.get("accent", (229, 115, 138))
+        sticker_bg = theme.get("sticker_bg", (255, 249, 242))
+
+        mini_cards: List[Image.Image] = []
+        card_w, card_h = 600, 900
+        slot_w, slot_h = 500, 640
+        slot_x = (card_w - slot_w) // 2
+        slot_y = 55
+
+        valid = [p for p in photo_paths if p.exists()]
+        if not valid:
+            valid = photo_paths
+
+        for i in range(4):
+            card = Image.new("RGB", (card_w, card_h), color=theme["bg"])
+            draw = ImageDraw.Draw(card)
+
+            # Stitched outer mini frame
+            cls._draw_dashed_border(
+                draw, 14, 14, card_w - 14, card_h - 14, color=accent, width=2, dash=12, gap=8
+            )
+
+            # Corner mini ornaments
+            cls._draw_flower(draw, 28, 28, 10, accent)
+            cls._draw_flower(draw, card_w - 28, 28, 10, accent)
+
+            # Photo slot
+            src_path = valid[i % len(valid)]
+            with Image.open(src_path) as photo:
+                fitted = ImageOps.fit(photo, (slot_w, slot_h), Image.Resampling.LANCZOS)
+                fitted = cls.apply_filter(fitted, filter_name)
+                card.paste(fitted, (slot_x, slot_y))
+
+            cls._draw_slot_frame_and_sticker(
+                draw, slot_x, slot_y, slot_w, slot_h, i, theme, sticker_id=sticker_id
+            )
+
+            # Footer area
+            title = (customer_name.strip() if customer_name else branding_text or "SWEET STUDIO")[:18]
+            date_str = datetime.now().strftime("%d.%m.%Y")
+            draw.text((card_w // 2 - (len(title) * 4), 725), f"✦ {title} ✦", fill=theme["text"])
+            draw.text(
+                (card_w // 2 - 95, 765),
+                f"MINI PHOTO  •  {date_str}",
+                fill=theme["subtext"],
+            )
+            cls._draw_heart(draw, card_w // 2, 815, 10, accent)
+
+            mini_cards.append(card)
+
+        # Impose onto 1200x1800 media sheet with cross cut guides
+        imposed = PrintImpositionEngine.impose_quad_mini(
+            mini_cards, bg_color=theme["bg"], draw_cutting_guide=True
+        )
+        imposed.save(output_path, "JPEG", quality=92)
+        return output_path
+
+    @classmethod
+    def _compose_custom_mixed(
+        cls,
+        photo_paths: List[Path],
+        output_path: Path,
+        branding_text: str,
+        filter_name: str,
+        theme: Dict[str, Any],
+        customer_name: Optional[str] = None,
+        sticker_id: str = "sweet_bows",
+    ) -> Path:
+        """
+        Layout D: 1x Square Hero (4x4 inch = 1200x1200 px) + 2x Mini Photo (2x2 inch = 600x600 px).
+        Total media size: 1200x1800 px (4x6 inch @ 300 DPI).
+        """
+        accent = theme.get("accent", (229, 115, 138))
+        sticker_bg = theme.get("sticker_bg", (255, 249, 242))
+
+        valid = [p for p in photo_paths if p.exists()]
+        if not valid:
+            valid = photo_paths
+
+        # 1. Hero Card (1200 x 1200 px)
+        hero_w, hero_h = 1200, 1200
+        hero_card = Image.new("RGB", (hero_w, hero_h), color=theme["bg"])
+        draw_hero = ImageDraw.Draw(hero_card)
+
+        cls._draw_dashed_border(
+            draw_hero, 16, 16, hero_w - 16, hero_h - 16, color=accent, width=2, dash=14, gap=10
+        )
+        cls._draw_flower(draw_hero, 34, 34, 14, accent)
+        cls._draw_flower(draw_hero, hero_w - 34, 34, 14, accent)
+        cls._draw_bow(draw_hero, hero_w // 2, 34, 18, accent, sticker_bg)
+
+        hero_slot_w, hero_slot_h = 1060, 930
+        hero_slot_x = (hero_w - hero_slot_w) // 2
+        hero_slot_y = 65
+
+        with Image.open(valid[0]) as photo:
+            fitted = ImageOps.fit(photo, (hero_slot_w, hero_slot_h), Image.Resampling.LANCZOS)
+            fitted = cls.apply_filter(fitted, filter_name)
+            hero_card.paste(fitted, (hero_slot_x, hero_slot_y))
+
+        cls._draw_slot_frame_and_sticker(
+            draw_hero, hero_slot_x, hero_slot_y, hero_slot_w, hero_slot_h, 0, theme, sticker_id=sticker_id
+        )
+
+        title = (customer_name.strip() if customer_name else branding_text or "SWEET STUDIO")[:24]
+        draw_hero.text((hero_w // 2 - (len(title) * 5), 1030), f"✦ {title} ✦", fill=theme["text"])
+        draw_hero.text(
+            (hero_w // 2 - 130, 1075),
+            "SWEET HERO EDITION  •  " + datetime.now().strftime("%d.%m.%Y"),
+            fill=theme["subtext"],
+        )
+        cls._draw_heart(draw_hero, hero_w // 2, 1125, 11, accent)
+
+        # 2. Mini Photos (each 600 x 600 px)
+        mini_cards: List[Image.Image] = []
+        mini_w, mini_h = 600, 600
+        mini_slot_w, mini_slot_h = 500, 430
+        mini_slot_x = (mini_w - mini_slot_w) // 2
+        mini_slot_y = 40
+
+        for idx in range(2):
+            mini_card = Image.new("RGB", (mini_w, mini_h), color=theme["bg"])
+            draw_mini = ImageDraw.Draw(mini_card)
+
+            cls._draw_dashed_border(
+                draw_mini, 12, 12, mini_w - 12, mini_h - 12, color=accent, width=2, dash=10, gap=8
+            )
+
+            photo_idx = min(idx + 1, len(valid) - 1)
+            with Image.open(valid[photo_idx]) as photo:
+                fitted = ImageOps.fit(photo, (mini_slot_w, mini_slot_h), Image.Resampling.LANCZOS)
+                fitted = cls.apply_filter(fitted, filter_name)
+                mini_card.paste(fitted, (mini_slot_x, mini_slot_y))
+
+            cls._draw_slot_frame_and_sticker(
+                draw_mini, mini_slot_x, mini_slot_y, mini_slot_w, mini_slot_h, idx + 1, theme, sticker_id=sticker_id
+            )
+
+            caption = f"MOMENT {idx + 1}"
+            draw_mini.text((mini_w // 2 - (len(caption) * 4), 495), caption, fill=theme["text"])
+            cls._draw_heart(draw_mini, mini_w // 2, 535, 9, accent)
+
+            mini_cards.append(mini_card)
+
+        # Impose into 1200x1800 media sheet
+        imposed = PrintImpositionEngine.impose_custom_mixed(
+            hero_card, mini_cards, bg_color=theme["bg"], draw_cutting_guide=True
+        )
+        imposed.save(output_path, "JPEG", quality=92)
         return output_path

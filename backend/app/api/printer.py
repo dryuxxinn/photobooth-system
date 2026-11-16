@@ -24,6 +24,20 @@ def list_print_jobs():
     return {"jobs": get_db_service().list_print_jobs()}
 
 
+@router.get("/imposition/layouts")
+def get_imposition_layouts():
+    """Return available print imposition layouts (Layout A, B, C, D) and cutting mechanisms."""
+    from backend.app.services.image.imposition import PrintImpositionEngine
+    return {
+        "layouts": PrintImpositionEngine.list_layouts(),
+        "default_media": {
+            "name": "4R Photo Paper",
+            "inches": "4 x 6 inch",
+            "resolution_300dpi": [1200, 1800],
+        },
+    }
+
+
 @router.post("/print")
 def trigger_print(payload: PrintRequest = PrintRequest()):
     """

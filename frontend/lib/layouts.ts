@@ -167,6 +167,41 @@ export function getMockSpec(
         footerY: 925,
       };
     }
+    case "quad_mini": {
+      const totalW = 1200;
+      const totalH = 1800;
+      const slotW = 500;
+      const slotH = 640;
+      const slots: MockSlot[] = [
+        { x: 50, y: 55, w: slotW, h: slotH, poseIndex: 0 },
+        { x: 650, y: 55, w: slotW, h: slotH, poseIndex: 1 },
+        { x: 50, y: 955, w: slotW, h: slotH, poseIndex: 2 },
+        { x: 650, y: 955, w: slotW, h: slotH, poseIndex: 3 },
+      ];
+      return {
+        width: totalW,
+        height: totalH,
+        kind: "postcard",
+        slots,
+        footerY: 1720,
+      };
+    }
+    case "custom_mixed": {
+      const totalW = 1200;
+      const totalH = 1800;
+      const slots: MockSlot[] = [
+        { x: 70, y: 65, w: 1060, h: 930, poseIndex: 0 },
+        { x: 50, y: 1240, w: 500, h: 430, poseIndex: 1 },
+        { x: 650, y: 1240, w: 500, h: 430, poseIndex: 2 },
+      ];
+      return {
+        width: totalW,
+        height: totalH,
+        kind: "postcard",
+        slots,
+        footerY: 1720,
+      };
+    }
     case "vertical":
     default:
       return buildStripSpec(posesRequired || 3, 1);

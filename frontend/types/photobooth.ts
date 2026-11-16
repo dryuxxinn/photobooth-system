@@ -115,20 +115,35 @@ export type TemplateLayoutType =
   | "landscape_3"
   | "grid"
   | "single"
-  | "wide_1";
+  | "wide_1"
+  | "quad_mini"
+  | "custom_mixed";
 
 export interface TemplateOption {
   id: string;
   name: string;
   photos_required: number;
   layout: TemplateLayoutType;
-  category?: "strip" | "postcard" | "special" | "single";
+  category?: "strip" | "postcard" | "special" | "single" | "mini" | "mixed";
   aspect_label?: string;
   prints_doubled?: boolean;
   default_frame?: string;
   description: string;
   has_custom_overlay?: boolean;
   custom_overlay_url?: string | null;
+}
+
+export interface ImpositionLayoutOption {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  media_inches: string;
+  media_size_px: [number, number];
+  product_count: number;
+  product_size_inches: string;
+  product_size_px: [number, number] | string;
+  cutting_mechanism: string;
 }
 
 export interface StickerOption {

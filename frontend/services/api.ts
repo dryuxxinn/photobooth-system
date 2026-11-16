@@ -7,6 +7,7 @@ import {
   CustomFilterPreset,
   FrameThemeOption,
   HealthStatus,
+  ImpositionLayoutOption,
   PhotoItem,
   PrinterStatus,
   PrintJobRecord,
@@ -135,6 +136,16 @@ export const photoboothApi = {
     request<{ sessions: SessionDetail[] }>(`/session/history?limit=${limit}`),
 
   getPrintJobs: () => request<{ jobs: PrintJobRecord[] }>("/printer/jobs"),
+
+  getImpositionLayouts: () =>
+    request<{
+      layouts: ImpositionLayoutOption[];
+      default_media: {
+        name: string;
+        inches: string;
+        resolution_300dpi: [number, number];
+      };
+    }>("/imposition/layouts"),
 
   getArPresets: () => request<ARPresetOption[]>("/ar/presets"),
 

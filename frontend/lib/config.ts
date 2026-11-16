@@ -22,6 +22,8 @@ export const DEFAULT_OPERATOR_CONFIG: BoothOperatorConfig = {
     "classic_strip_3",
     "ourbooth_twin_3",
     "twin_strip_4",
+    "quad_mini_4",
+    "mixed_hero_3",
     "grid_2x2_4",
     "cinema_ticket_4",
     "engagement_event_3",
