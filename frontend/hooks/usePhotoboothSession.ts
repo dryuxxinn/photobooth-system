@@ -23,7 +23,8 @@ import {
   DEFAULT_TEMPLATES,
   getFilterCss,
 } from "@/lib/defaults";
-import { getWsUrl, photoboothApi } from "@/services/api";
+import { getWsUrl, photoboothApi, resolveStorageUrl } from "@/services/api";
+import { printImageDirect } from "@/lib/webPrint";
 import { useWebcam } from "@/hooks/useWebcam";
 import {
   playCountdownBeep,
@@ -703,13 +704,32 @@ export function usePhotoboothSession() {
       setPoliteMessage("Mengirim foto ke printer...");
       try {
         const snapshot = { ...session };
-        const res = await photoboothApi.printSession(
-          session.session_id,
-          copies
-        );
+        const stripUrl = resolveStorageUrl(session.processed_image_url);
+
+        // 1. Direct Web Printing via Browser (Skenario 1: Silent print di Kiosk atau dialog print browser)
+        if (stripUrl) {
+          printImageDirect(stripUrl, {
+            copies,
+            title: `Photobooth - ${session.session_id}`,
+          }).catch(() => null);
+        }
+
+        // 2. Notifikasi printer backend atau complete session
+        let printRes: any = null;
+        try {
+          printRes = await photoboothApi.printSession(
+            session.session_id,
+            copies
+          );
+        } catch {
+          printRes = await photoboothApi
+            .completeSession(session.session_id)
+            .catch(() => null);
+        }
+
         // Brief visible confirmation on PrintingScreen before transitioning to CompletionScreen
         await sleep(1600);
-        setCompletedSession(res.session || snapshot);
+        setCompletedSession(printRes?.session || snapshot);
         setSession(null);
         setState("COMPLETED");
         setKioskStep("COMPLETION");

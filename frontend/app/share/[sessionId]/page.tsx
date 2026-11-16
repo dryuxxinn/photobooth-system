@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { SessionDetail } from "@/types/photobooth";
 import { loadOperatorConfig } from "@/lib/config";
 import { photoboothApi, resolveStorageUrl } from "@/services/api";
+import { printImageDirect } from "@/lib/webPrint";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -15,6 +16,7 @@ import {
   BowIcon,
   FlowerIcon,
   HeartIcon,
+  PrinterIcon,
   QrIcon,
   ShareIcon,
   SparkleIcon,
@@ -226,21 +228,36 @@ export default function ShareSessionPage() {
                   />
                 </div>
 
-                <Button
-                  variant="strong"
-                  size="md"
-                  leftIcon={<ShareIcon className="size-4 text-white" />}
-                  onClick={() =>
-                    downloadOrShareFile(
-                      stripUrl,
-                      `sweet-studio-strip-${session.session_id}.jpg`,
-                      "image/jpeg"
-                    )
-                  }
-                  className="w-full min-h-[48px] text-xs sm:text-sm shrink-0 animate-pulse-cta"
-                >
-                  Unduh / Bagikan Strip
-                </Button>
+                <div className="flex flex-col gap-2 w-full shrink-0">
+                  <Button
+                    variant="strong"
+                    size="md"
+                    leftIcon={<ShareIcon className="size-4 text-white" />}
+                    onClick={() =>
+                      downloadOrShareFile(
+                        stripUrl,
+                        `sweet-studio-strip-${session.session_id}.jpg`,
+                        "image/jpeg"
+                      )
+                    }
+                    className="w-full min-h-[44px] text-xs sm:text-sm animate-pulse-cta"
+                  >
+                    Unduh / Bagikan Strip
+                  </Button>
+                  <Button
+                    variant="surface"
+                    size="md"
+                    leftIcon={<PrinterIcon className="size-4 text-sweet-primaryStrong" />}
+                    onClick={() =>
+                      printImageDirect(stripUrl, {
+                        title: `Sweet Studio - ${session.session_id}`,
+                      })
+                    }
+                    className="w-full min-h-[44px] text-xs sm:text-sm"
+                  >
+                    Cetak Foto (Print)
+                  </Button>
+                </div>
               </Card>
             )}
 

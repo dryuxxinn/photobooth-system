@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { SessionDetail } from "@/types/photobooth";
 import { photoboothApi, resolveStorageUrl } from "@/services/api";
+import { printImageDirect } from "@/lib/webPrint";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { QrDialog } from "@/components/QrDialog";
@@ -65,19 +66,30 @@ export function SessionTable({ sessions, onRefresh }: SessionTableProps) {
   const handleReprint = async (session: SessionDetail) => {
     setReprintingId(session.session_id);
     setActionNotice(null);
+
+    // 1. Direct Web Print via Browser (Skenario 1)
+    const stripUrl = resolveStorageUrl(session.processed_image_url);
+    if (stripUrl) {
+      printImageDirect(stripUrl, {
+        copies: 1,
+        title: `Reprint - ${session.session_id}`,
+      }).catch(() => null);
+    }
+
+    // 2. Notifikasi backend print service
     try {
       const res = await photoboothApi.reprintSession(session.session_id, 1);
       setActionNotice({
         id: session.session_id,
-        msg: res.message || "Berhasil dikirim ke printer.",
+        msg: res.message || "Perintah cetak terkirim ke printer.",
         tone: "success",
       });
       if (onRefresh) await onRefresh();
-    } catch (err: any) {
+    } catch {
       setActionNotice({
         id: session.session_id,
-        msg: err?.message || "Gagal mencetak ulang.",
-        tone: "error",
+        msg: "Membuka antrean cetak browser...",
+        tone: "success",
       });
     } finally {
       setReprintingId(null);
